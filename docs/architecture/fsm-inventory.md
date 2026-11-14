@@ -265,6 +265,36 @@ World.
 Derived from the stabilisation result, but it has real transitions and is published, so it is
 tracked explicitly rather than recomputed ad hoc.
 
+### F-21 — Wait Condition
+
+| | |
+|---|---|
+| Level | A1 |
+| States | `pending`, `satisfied`, `cancelled`, `expired` |
+| Events | `await`, `wake`, `cancel`, `ttl` |
+| Authority | Runtime for `wake`/`ttl`; the run for `await`/`cancel` |
+| Durability | Durable with the run (it is why the run is `waiting`) |
+| Recovery | A `pending` condition survives a crash and is re-evaluated at load; a condition whose target no longer exists resolves to `cancelled` |
+| Projection | **Wait reason**: `human_permission`, `human_question`, `human_auth`, `external_service`, `timer`, `dependency` |
+
+"Waiting" without a reason is not implementable and not renderable. The reason is the entire
+value of the status: it distinguishes "needs a human" from "waiting on a service".
+
+### F-22 — Result Acknowledgement
+
+| | |
+|---|---|
+| Level | A1 with A3 (delivery) |
+| States | `unacknowledged`, `acknowledged`, `expired` |
+| Events | `result_ready`, `seen`, `ttl` |
+| Authority | Host, on behalf of an actor |
+| Durability | Durable while unacknowledged |
+| Recovery | Survives restart; an unacknowledged result is still unacknowledged |
+| Projection | The difference between "finished" and "finished and nobody has looked" |
+
+This is what terminal-status dialects mean by `done`. It is not run status: a run can be
+`succeeded` and unacknowledged for a week.
+
 ### F-20 — Collaboration / Sync
 
 | | |
