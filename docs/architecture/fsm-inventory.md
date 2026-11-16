@@ -98,8 +98,8 @@ No `proposed` state: document transactions are atomic, so a half-added member ca
 | Level | A1 |
 | States | `forming`, `assembled`, `dissolving`, `dissolved` |
 | Authority | World document transaction |
-| Durability | `assembled` and `dissolved` durable; the others are transaction-internal |
-| Recovery | `forming`/`dissolving` at load resolve to `dissolved` if no members remain, otherwise `assembled` |
+| Durability | Only `assembled` is durable, encoded as presence in `composites`. `dissolved` is removal, not a stored state (D-034) |
+| Recovery | `forming` and `dissolving` are transaction-internal and cannot appear at load |
 | Projection | Existence in the world, member count |
 
 ### F-07 — Composite Management

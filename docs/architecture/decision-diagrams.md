@@ -433,3 +433,14 @@ flowchart LR
     B --> AT
     AT -. "grants nothing" .-> X["no membership · no management · no access"]
 ```
+
+## D-032 / D-033 — Dispatch is a grant, not an endpoint
+
+```mermaid
+flowchart LR
+    R["manager run"] --> G["grant<br/>composite + memberSet"]
+    G --> V{"target in memberSet?"}
+    V -- "yes" --> M["member event input"]
+    V -- "no" --> X["rejected"]
+    A["Composite aliases"] -. "never expose dispatch" .-> X
+```
