@@ -121,3 +121,29 @@ flowchart TB
 | I-001 | partial | F-15 withdrawn; projection still needs sessions ∪ bindings |
 
 Still open: I-006, I-011 through I-022.
+
+## Second resolution log
+
+| Finding | Resolved by | How |
+|---|---|---|
+| I-006 | D-019 | Seven-word display vocabulary; `suspended` and `cancelled` represented |
+| I-011 | D-025 | F-05 provenance check conditioned on a pinned template |
+| I-012 | D-025 | Save-as captures structure and config, never state; recursive save |
+| I-013 | D-026 | Removing the last member dissolves the Composite |
+| I-014 | D-024 | Camera and grant scope are separate; authority never spatial |
+| I-015 | D-026 | Fold revalidates on membership change; empty-set rule |
+| I-016 | D-020 | Typed equality table |
+| I-017 | D-021 | Staged resolution recorded |
+| I-018 | D-022 | Hierarchical local coordinates; translation and uniform scale; null case |
+| I-019 | D-023 | Full placement operation set |
+| I-020 | D-019 | Registry → mode → display chain; mode renamed occupied/vacant |
+| I-021 | D-019 | Frozen-host consequence stated and testable |
+| I-022 | D-027 | Language, engine, adapter rules, plugin surfaces recorded |
+| I-023 | pending | F-20 ordering is cosmetic; fix on next edit |
+| I-024 | D-019 | Cross-referenced; 0002/0003 remain append-only |
+| I-025 | fixed | F-01 projection carries acknowledgement |
+| I-026 | D-028 | Published vs embedded defined |
+| I-027 | D-028 | Handoff amendment note recorded |
+| I-028 | D-028 | Retention and archival defined |
+
+All findings closed except I-023 (cosmetic ordering).

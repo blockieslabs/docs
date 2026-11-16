@@ -44,3 +44,17 @@ levels; a repository should be created only when a level has something to build.
 - A claim that changes behaviour must name the level (A0–A6) it belongs to.
 - Anything described as a state must appear in the FSM inventory with an owner and a
   transition authority, or it is a derived projection and must be labelled as one.
+
+## Amendments to the handoff
+
+The handoff (`blockies-architecture-handoff/BLOCKIES-HANDOFF.md`) predates these decisions and is
+amended by them. Known deltas:
+
+| Handoff statement | Amended by |
+|---|---|
+| Every Blockie has "a placement in a Frame" | D-013 — placement is nullable |
+| Operational mode is `drawing` / `computing` | D-019 — `vacant` / `occupied` |
+| Manager must hold explicit World-granted authority | D-018 — one verb, `composite.dispatch` |
+| Composite endpoint union with independent ports | D-015 — Composite ports are aliases |
+| "A Composite is a first-class grouping entity" plus templates | D-001 — grouping and instantiation are separate operations |
+| Attention is a relationship | D-009 — attention is a projection |

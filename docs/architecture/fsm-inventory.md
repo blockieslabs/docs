@@ -231,6 +231,9 @@ not through a session. The projection must union both sources before this is clo
 Included because group move, reparent, and coordinate-scope change must be atomic; a partially
 moved group is a corrupt World.
 
+Operations: `assign` (promote from null), `clear` (demote to null), `move`, `reparent`,
+`group_move`, `dissolve_convert`. See D-022 and D-023.
+
 ### F-18 — Renderer Resolution
 
 | | |
@@ -256,6 +259,16 @@ World.
 
 Derived from the stabilisation result, but it has real transitions and is published, so it is
 tracked explicitly rather than recomputed ad hoc.
+
+### F-20 — Collaboration / Sync
+
+| | |
+|---|---|
+| Level | A3 |
+| States | deferred |
+| | |
+
+Not designed. Placeholder so the gap is visible.
 
 ### F-21 — Wait Condition
 
@@ -286,16 +299,6 @@ value of the status: it distinguishes "needs a human" from "waiting on a service
 
 This is what terminal-status dialects mean by `done`. It is not run status: a run can be
 `succeeded` and unacknowledged for a week.
-
-### F-20 — Collaboration / Sync
-
-| | |
-|---|---|
-| Level | A3 |
-| States | deferred |
-| | |
-
-Not designed. Placeholder so the gap is visible.
 
 ## Derived projections (not FSMs)
 

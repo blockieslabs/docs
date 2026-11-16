@@ -23,6 +23,16 @@ deleted: the trail is the point.
 | D-016 | Claim routing decides reducer versus run | active |
 | D-017 | Host output ports declare their producer | active |
 | D-018 | Management grants dispatch, nothing else | active |
+| D-019 | One status chain: registry, mode, display | active |
+| D-020 | Value equality is typed | active |
+| D-021 | Inputs resolve from the staged generation | active |
+| D-022 | Hierarchical local coordinates; translation and uniform scale | active |
+| D-023 | Placement operations are atomic | active |
+| D-024 | Camera and grant scope are unrelated | active |
+| D-025 | Fork rewrites provenance; save-as captures structure only | active |
+| D-026 | Empty Composites dissolve; folds revalidate | active |
+| D-027 | JS/TS first, WASM second, no native libraries | active |
+| D-028 | Terminology and retention | active |
 
 ## Lineage
 
@@ -340,4 +350,54 @@ flowchart LR
     DP --> W2["worker 2 input"]
     DP --> W3["worker 3 input"]
     M -. "never" .-> N["member state<br/>member config<br/>nested internals<br/>document writes"]
+```
+
+## D-019 — One status chain
+
+```mermaid
+flowchart LR
+    subgraph R["Registry (authoritative)"]
+        R1["queued · running · waiting<br/>suspended · cancelling"]
+        R2["succeeded · failed · cancelled"]
+    end
+    R1 --> M1["occupied"]
+    R2 --> M2["vacant"]
+    M1 --> D1["working · blocked · idle · paused"]
+    M2 --> D2["done · cancelled · error<br/>nothing after acknowledgement"]
+```
+
+## D-022 — Hierarchical local coordinates
+
+```mermaid
+flowchart TB
+    W["World Frame<br/>root scope"]
+    C["Composite transform<br/>translation + uniform scale"]
+    B1["member placement<br/>local to the Composite"]
+    B2["member with placement: null"]
+    W --> C
+    C --> B1
+    C --> B2
+    B2 --> F["empty footprint<br/>not drawn, still a member"]
+```
+
+## D-024 — Camera and grant scope are unrelated
+
+```mermaid
+flowchart LR
+    V["View"] --> CAM["Camera<br/>spatial framing"]
+    V --> G["Grant scope<br/>explicit entities · ports · verbs"]
+    CAM -. "confers nothing" .-> G
+    G --> A["audience: deliver events to buttons A and B only"]
+```
+
+## D-027 — Two plugin surfaces, no native libraries
+
+```mermaid
+flowchart TB
+    D["Definition plus module"] --> JS["JS/TS adapter<br/>QuickJS or Boa<br/>bounded step"]
+    D --> WASM["WASM adapter<br/>Rust · physics · hot paths"]
+    JS --> RT["Runtime"]
+    WASM --> RT
+    RT --> REN["Renderer package<br/>presentation plugin"]
+    X["Native libraries"] -. "never" .-> RT
 ```
