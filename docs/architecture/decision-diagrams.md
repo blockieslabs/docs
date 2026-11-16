@@ -36,6 +36,9 @@ deleted: the trail is the point.
 | D-029 | Process phase scheduling and failure classes | active |
 | D-030 | Runs never observe mid-transaction values | active |
 | D-031 | Attention is bindings ∪ sessions | active |
+| D-032 | Dispatch is not a Composite alias source | active |
+| D-033 | The dispatch endpoint is a grant, not a port | active |
+| D-034 | Absence encodes unplaced and dissolved | active |
 
 ## Lineage
 
