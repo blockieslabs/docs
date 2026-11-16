@@ -105,9 +105,10 @@ both emit in one transaction, event-phase emissions enqueue before process-phase
 
 ## 9. Steps
 
-**P-21.** A step receives exactly: its own state, the resolved values of its `reads` ports, its
-inbox items, and its grant if any. It does not receive host Model State, host configuration, host
-ports outside `reads`, other entities, or ambient environment.
+**P-21.** A step receives exactly: its own state, the host's configuration (read-only), the
+resolved values of its `reads` ports, its inbox items, and its grant if any. It does not receive
+host Model State, host ports outside `reads`, other entities, or ambient environment. A
+configuration change takes effect at the next step and does not wake a Run.
 
 **P-22.** A step returns: `state` (required), and optionally `publish`, `dispatch`, `wait`, and
 `outcome`.

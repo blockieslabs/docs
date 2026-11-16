@@ -43,6 +43,9 @@ deleted: the trail is the point.
 | D-036 | Chrome is never interactive | active |
 | D-037 | A Composite's own appearance is static per revision | active |
 | D-038 | Members draw above the assembly; layer orders members | active |
+| D-039 | The step result is a three-way outcome | active |
+| D-040 | The step context includes host configuration, never host state | active |
+| D-041 | Repair is limited to dangling designation | active |
 
 ## Lineage
 
