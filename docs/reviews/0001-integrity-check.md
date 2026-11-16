@@ -106,3 +106,18 @@ flowchart TB
   definition still needs the union with process input bindings).
 - F-01's projection no longer exposes a representation flag; it exposes acknowledgement and
   placement present/null (I-004, I-025).
+
+## Resolution log
+
+| Finding | Resolved by | How |
+|---|---|---|
+| I-002 | 0004, amendment to D-003 | `interface_mode` deleted as redundant; two dimensions remain; F-08 withdrawn |
+| I-003 | 0004, amendment to D-003 | "declarative" = no manager and no process; folds are protocol evaluation |
+| I-007 | D-015 | Composite interface is an alias table with no state |
+| I-008 | D-016 | Claim routing; inputs are reducer-owned or run-owned, never both |
+| I-009 | D-017 | Every value output declares `producer: compute \| process` |
+| I-010 | D-018 | One verb: `composite.dispatch`, bounded by a declared member set |
+| I-004 | fixed in place | F-01 projection corrected |
+| I-001 | partial | F-15 withdrawn; projection still needs sessions ∪ bindings |
+
+Still open: I-006, I-011 through I-022.

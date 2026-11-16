@@ -64,6 +64,9 @@ resumes in a later transaction. This is the mechanism that makes "a whole progra
 | Recovery | Items survive a crash and are redelivered at least once; the step must be idempotent or the definition must declare otherwise |
 | Projection | Queue depth, oldest item age (drives the "why is it not responding" view) |
 
+Only event inputs claimed by the run's host contract enter the inbox (D-016). An unclaimed input
+goes to the Type reducer and never appears here.
+
 ### F-04 — Run Attachment
 
 | | |
@@ -115,17 +118,11 @@ The `run_terminal` case must commit run status, host occupancy, and designation 
 transition. Splitting them is what produces a Composite that claims a manager it does not
 have.
 
-### F-08 — Composite Interface Mode
+### F-08 — Composite Interface Mode (withdrawn)
 
-| | |
-|---|---|
-| Level | A0/A1 |
-| States | `declarative`, `managed` |
-| Authority | World document transaction |
-| Durability | Durable |
-| Projection | Whether the Composite's public interface needs a live manager |
-
-A mode, not a lifecycle. It is listed because it is frequently mistaken for a lifecycle state.
+Withdrawn by D-018 / amendment to D-003. The mode was fully implied by `management ≠ unmanaged`,
+so it carried no independent information. "Managed" survives as a derived label. A Composite's
+interface is always an alias table (D-015); whether a manager exists is F-07.
 
 ### F-09 — World Document
 
@@ -201,7 +198,7 @@ generation N+1 is not silently showing N as if it were current.
 | Projection | Effective capability set per actor |
 
 Manager authority is a *grant* scoped to one Composite, not a role and not a property of the
-process definition.
+process definition. In v1 the grant has exactly one verb, `composite.dispatch` (D-018).
 
 ### F-15 — Attention (withdrawn)
 

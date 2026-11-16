@@ -7,7 +7,7 @@ deleted: the trail is the point.
 |---|---|---|
 | D-001 | Grouping and instantiation are different operations | active |
 | D-002 | Run state is separate from host Model State | active |
-| D-003 | Composites may be static; three independent state dimensions | active |
+| D-003 | Composites may be static; two state dimensions (amended by D-018) | active |
 | D-004 | Explicit state, minimal implicit machines (with two bounds) | active |
 | D-005 | Every managed process is represented | **superseded by D-013** |
 | D-006 | Geometry is semantically inert | active |
@@ -19,6 +19,10 @@ deleted: the trail is the point.
 | D-012 | Aggregation is declared; implicit fan-in stays forbidden | active |
 | D-013 | Host is mandatory, placement is nullable | active |
 | D-014 | Primary status is derived, never declared | active |
+| D-015 | A Composite interface is an alias table | active |
+| D-016 | Claim routing decides reducer versus run | active |
+| D-017 | Host output ports declare their producer | active |
+| D-018 | Management grants dispatch, nothing else | active |
 
 ## Lineage
 
@@ -278,4 +282,62 @@ flowchart TB
     subgraph Claim["Rejected: declared status"]
         C1["program says 'working'"] -. "can disagree" .-> C2["reality: stuck"]
     end
+```
+
+## D-015 — A Composite interface is an alias table
+
+Aliases point at things that already exist. They have no state, so there is no second port
+system and nothing to keep in sync.
+
+```mermaid
+flowchart LR
+    subgraph IF["Composite interface: aliases, no state"]
+        A1["public: total<br/>value out"]
+        A2["public: submit<br/>event in"]
+        A3["public: counts<br/>value out"]
+    end
+    M1["member port<br/>aggregator.total"] --> A1
+    A2 --> M2["manager host port<br/>submit, claimed"]
+    F["fold over member set"] --> A3
+    A1 --> W["World connections"]
+    A2 --> W
+```
+
+## D-016 — Claim routing decides reducer versus run
+
+```mermaid
+flowchart LR
+    E["event delivery"] --> Q{"claimed by the run?"}
+    Q -- "yes" --> IB["run inbox (F-03)"]
+    Q -- "no" --> RD["Type reducer"]
+    IB --> PP["process phase"]
+    RD --> EP["event phase"]
+```
+
+## D-017 — Host output ports declare their producer
+
+```mermaid
+flowchart TB
+    subgraph V["value output ports"]
+        V1["producer: compute<br/>Type Compute only"]
+        V2["producer: process<br/>attached run only"]
+    end
+    V2 --> U["no run attached<br/>status unavailable<br/>consumers blocked"]
+    subgraph EV["event output ports"]
+        E1["reducer emits"]
+        E2["run emits"]
+        E1 --> O["ordered: event phase first"]
+        E2 --> O
+    end
+```
+
+## D-018 — Management grants dispatch, nothing else
+
+```mermaid
+flowchart LR
+    M["manager run"] --> DP["addressed dispatch<br/>declared member set"]
+    DP --> W1["worker 1 input"]
+    DP --> W2["worker 2 input"]
+    DP --> W3["worker 3 input"]
+    M -. "never" .-> N["member state<br/>member config<br/>nested internals<br/>document writes"]
 ```
