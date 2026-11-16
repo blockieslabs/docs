@@ -1,4 +1,4 @@
-// Sidebar, active state, and diagram rendering.
+// Sidebar, theme, and diagram rendering.
 // Every page declares <body data-root=".."> so links resolve from any depth.
 
 const NAV = [
@@ -25,36 +25,104 @@ const NAV = [
   },
 ];
 
+const THEME_KEY = "blockies-theme";
+const MODES = ["system", "light", "dark"];
+
+const ICONS = {
+  system:
+    '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.75" y="2.75" width="12.5" height="8.5" rx="1.2"/><path d="M5.5 14h5M8 11.25V14"/></svg>',
+  light:
+    '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.05 3.05l1.13 1.13M11.82 11.82l1.13 1.13M12.95 3.05l-1.13 1.13M4.18 11.82l-1.13 1.13"/></svg>',
+  dark:
+    '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13.2 9.4A5.6 5.6 0 0 1 6.6 2.8a5.6 5.6 0 1 0 6.6 6.6Z"/></svg>',
+};
+
+function readMode() {
+  try {
+    return localStorage.getItem(THEME_KEY) || "system";
+  } catch (e) {
+    return "system";
+  }
+}
+
+function applyMode(mode) {
+  const root = document.documentElement;
+  if (mode === "system") delete root.dataset.theme;
+  else root.dataset.theme = mode;
+}
+
+function saveMode(mode) {
+  try {
+    localStorage.setItem(THEME_KEY, mode);
+  } catch (e) {
+    /* storage may be unavailable on file:// in some browsers */
+  }
+  applyMode(mode);
+}
+
+function buildNav(root, here) {
+  const nav = document.getElementById("nav");
+  if (!nav) return;
+  const hereDir = location.pathname.replace(/[^/]*$/, "");
+  const parts = [
+    `<a class="brand" href="${root}/index.html">Blockies<span>.</span></a>`,
+    `<span class="tag">a field guide to the architecture</span>`,
+  ];
+  for (const g of NAV) {
+    parts.push(`<div class="group">${g.group}</div>`);
+    for (const [href, label] of g.items) {
+      const abs = new URL(root + "/" + href, location.href).pathname;
+      const active = hereDir + here === abs ? " active" : "";
+      parts.push(`<a class="item${active}" href="${root}/${href}">${label}</a>`);
+    }
+  }
+  parts.push(`<div class="spacer"></div>`);
+  parts.push(
+    `<button class="theme-toggle" type="button" aria-label="Change colour theme">` +
+      `<span class="icon"></span><span>Theme</span><span class="mode"></span></button>`
+  );
+  nav.innerHTML = parts.join("");
+
+  const btn = nav.querySelector(".theme-toggle");
+  const icon = btn.querySelector(".icon");
+  const label = btn.querySelector(".mode");
+
+  function paint(mode) {
+    icon.innerHTML = ICONS[mode];
+    label.textContent = mode;
+    btn.title = "Theme: " + mode + " (click to change)";
+  }
+
+  let mode = readMode();
+  applyMode(mode);
+  paint(mode);
+
+  btn.addEventListener("click", () => {
+    mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+    saveMode(mode);
+    paint(mode);
+  });
+}
+
+function renderDiagrams() {
+  if (!window.pele) return;
+  document.querySelectorAll(".mermaid").forEach((el) => {
+    const source = el.textContent.trim();
+    if (!source) return;
+    try {
+      pele.mount(el, source);
+    } catch (err) {
+      el.classList.add("diagram-error");
+      el.textContent = source;
+      console.error("Diagram failed to render:", err);
+    }
+  });
+}
+
 (function () {
   const root = document.body.dataset.root || ".";
   const here = location.pathname.split("/").pop() || "index.html";
-  const hereDir = location.pathname.replace(/[^/]*$/, "");
-
-  const nav = document.getElementById("nav");
-  if (nav) {
-    const parts = [
-      `<a class="brand" href="${root}/index.html">Blockies<span>.</span></a>`,
-      `<span class="tag">a field guide to the architecture</span>`,
-    ];
-    for (const g of NAV) {
-      parts.push(`<div class="group">${g.group}</div>`);
-      for (const [href, label] of g.items) {
-        const abs = new URL(root + "/" + href, location.href).pathname;
-        const active = hereDir + here === abs ? " active" : "";
-        parts.push(`<a class="item${active}" href="${root}/${href}">${label}</a>`);
-      }
-    }
-    nav.innerHTML = parts.join("");
-  }
-
-  if (window.mermaid) {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: "neutral",
-      securityLevel: "loose",
-      flowchart: { curve: "basis", htmlLabels: true },
-      sequence: { mirrorActors: false },
-    });
-    mermaid.run({ querySelector: ".mermaid" }).catch(() => {});
-  }
+  buildNav(root, here);
+  // Let layout settle so diagrams measure their container correctly.
+  requestAnimationFrame(renderDiagrams);
 })();
