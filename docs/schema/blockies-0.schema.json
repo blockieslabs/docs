@@ -1,0 +1,586 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://blockiess.org/schema/0/blockies.schema.json",
+  "title": "Blockies World",
+  "description": "Canonical document shape for a Blockies World (protocol 0.x). BTS type expressions and values are opaque here and validated by the type system.",
+  "$ref": "#/$defs/World",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Opaque and stable. Never derived from position, name, or path."
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "DefRef": {
+      "type": "object",
+      "required": ["id", "version", "digest"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/Digest" }
+      },
+      "additionalProperties": false
+    },
+    "EntityRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["blockie"],
+          "properties": { "blockie": { "$ref": "#/$defs/Id" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["composite"],
+          "properties": { "composite": { "$ref": "#/$defs/Id" } },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "BtsType": {
+      "description": "BTS type expression. Opaque to this schema."
+    },
+    "BtsValue": {
+      "description": "BTS value. Validated against its declared type by the type system."
+    },
+    "Frame": {
+      "type": "object",
+      "required": ["id", "space"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "space": { "enum": ["2d"] }
+      },
+      "additionalProperties": false
+    },
+    "Blockie": {
+      "type": "object",
+      "required": ["id", "type", "config", "state"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "type": { "$ref": "#/$defs/DefRef" },
+        "config": { "$ref": "#/$defs/BtsValue" },
+        "state": { "$ref": "#/$defs/BtsValue" }
+      },
+      "additionalProperties": false
+    },
+    "Composite": {
+      "type": "object",
+      "required": ["id", "origin", "members", "aliases", "folds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "origin": { "$ref": "#/$defs/CompositeOrigin" },
+        "members": { "type": "array", "items": { "$ref": "#/$defs/MemberEdge" } },
+        "manager": { "$ref": "#/$defs/ManagerDesignation" },
+        "aliases": { "type": "array", "items": { "$ref": "#/$defs/Alias" } },
+        "folds": { "type": "array", "items": { "$ref": "#/$defs/Fold" } }
+      },
+      "additionalProperties": false
+    },
+    "CompositeOrigin": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": { "kind": { "const": "grouping" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "definition", "memberMap"],
+          "properties": {
+            "kind": { "const": "template" },
+            "definition": { "$ref": "#/$defs/DefRef" },
+            "memberMap": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/EntityRef" }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "MemberEdge": {
+      "type": "object",
+      "required": ["entity", "provenance"],
+      "properties": {
+        "entity": { "$ref": "#/$defs/EntityRef" },
+        "provenance": {
+          "oneOf": [
+            { "const": "grouping" },
+            {
+              "type": "object",
+              "required": ["template"],
+              "properties": { "template": { "type": "string", "minLength": 1 } },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ManagerDesignation": {
+      "type": "object",
+      "required": ["run", "epoch"],
+      "properties": {
+        "run": { "$ref": "#/$defs/Id" },
+        "epoch": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "Alias": {
+      "type": "object",
+      "required": ["id", "direction", "kind", "type", "ref"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "direction": { "enum": ["in", "out"] },
+        "kind": { "enum": ["value", "event"] },
+        "type": { "$ref": "#/$defs/BtsType" },
+        "ref": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["member", "port"],
+              "properties": {
+                "member": { "$ref": "#/$defs/EntityRef" },
+                "port": { "$ref": "#/$defs/Id" }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["fold"],
+              "properties": { "fold": { "$ref": "#/$defs/Id" } },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": ["ref"],
+            "properties": { "ref": { "required": ["fold"] } }
+          },
+          "then": {
+            "properties": {
+              "kind": { "const": "value" },
+              "direction": { "const": "out" }
+            }
+          }
+        }
+      ]
+    },
+    "Fold": {
+      "type": "object",
+      "required": ["id", "op", "select", "port", "resultType"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "op": { "enum": ["sum", "count", "min", "max", "collect"] },
+        "select": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["kind"],
+              "properties": { "kind": { "const": "all" } },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["kind", "members"],
+              "properties": {
+                "kind": { "const": "members" },
+                "members": { "type": "array", "items": { "$ref": "#/$defs/EntityRef" } }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "port": { "$ref": "#/$defs/Id" },
+        "resultType": { "$ref": "#/$defs/BtsType" },
+        "emptyValue": { "$ref": "#/$defs/BtsValue" }
+      },
+      "additionalProperties": false
+    },
+    "Placement": {
+      "type": "object",
+      "required": ["scope", "transform"],
+      "properties": {
+        "scope": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["frame"],
+              "properties": { "frame": { "$ref": "#/$defs/Id" } },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["composite"],
+              "properties": { "composite": { "$ref": "#/$defs/Id" } },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "transform": {
+          "type": "object",
+          "required": ["translate", "scale"],
+          "properties": {
+            "translate": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "scale": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Endpoint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["blockie", "port"],
+          "properties": {
+            "blockie": { "$ref": "#/$defs/Id" },
+            "port": { "$ref": "#/$defs/Id" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["composite", "alias"],
+          "properties": {
+            "composite": { "$ref": "#/$defs/Id" },
+            "alias": { "$ref": "#/$defs/Id" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Connection": {
+      "type": "object",
+      "required": ["id", "from", "to"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "from": { "$ref": "#/$defs/Endpoint" },
+        "to": { "$ref": "#/$defs/Endpoint" }
+      },
+      "additionalProperties": false
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waiting",
+        "suspended",
+        "cancelling",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "WaitCondition": {
+      "type": "object",
+      "required": ["reason"],
+      "properties": {
+        "reason": {
+          "enum": [
+            "inbox",
+            "human_permission",
+            "human_question",
+            "human_auth",
+            "external_service",
+            "timer",
+            "dependency"
+          ]
+        },
+        "detail": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "InboxItem": {
+      "type": "object",
+      "required": ["delivery", "event", "port", "payload"],
+      "properties": {
+        "delivery": { "$ref": "#/$defs/Id" },
+        "event": { "$ref": "#/$defs/Id" },
+        "port": { "$ref": "#/$defs/Id" },
+        "payload": { "$ref": "#/$defs/BtsValue" },
+        "causation": { "$ref": "#/$defs/Id" }
+      },
+      "additionalProperties": false
+    },
+    "DispatchGrant": {
+      "type": "object",
+      "required": ["composite", "memberSet"],
+      "properties": {
+        "composite": { "$ref": "#/$defs/Id" },
+        "memberSet": { "type": "array", "items": { "$ref": "#/$defs/EntityRef" } }
+      },
+      "additionalProperties": false
+    },
+    "Run": {
+      "type": "object",
+      "required": ["id", "host", "definition", "status", "ack", "state", "inbox"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "host": { "$ref": "#/$defs/Id" },
+        "definition": { "$ref": "#/$defs/DefRef" },
+        "status": { "$ref": "#/$defs/RunStatus" },
+        "wait": { "$ref": "#/$defs/WaitCondition" },
+        "ack": { "enum": ["unacknowledged", "acknowledged", "expired"] },
+        "parent": { "$ref": "#/$defs/Id" },
+        "state": { "$ref": "#/$defs/BtsValue" },
+        "inbox": { "type": "array", "items": { "$ref": "#/$defs/InboxItem" } },
+        "grant": { "$ref": "#/$defs/DispatchGrant" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": ["status"],
+            "properties": { "status": { "const": "waiting" } }
+          },
+          "then": { "required": ["wait"] },
+          "else": { "not": { "required": ["wait"] } }
+        }
+      ]
+    },
+    "ProcessDefinition": {
+      "type": "object",
+      "required": ["id", "version", "digest", "stateType", "host", "step", "wake"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/Digest" },
+        "stateType": { "$ref": "#/$defs/BtsType" },
+        "host": {
+          "type": "object",
+          "required": ["claims", "reads", "publishes"],
+          "properties": {
+            "claims": { "type": "array", "items": { "$ref": "#/$defs/Id" }, "uniqueItems": true },
+            "reads": { "type": "array", "items": { "$ref": "#/$defs/Id" }, "uniqueItems": true },
+            "publishes": { "type": "array", "items": { "$ref": "#/$defs/Id" }, "uniqueItems": true }
+          },
+          "additionalProperties": false
+        },
+        "step": {
+          "type": "object",
+          "required": ["runtime", "module", "export"],
+          "properties": {
+            "runtime": { "type": "string", "minLength": 1 },
+            "module": { "$ref": "#/$defs/Digest" },
+            "export": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "wake": { "type": "array", "items": { "$ref": "#/$defs/WakeRule" } },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "steps": { "type": "integer", "minimum": 1 },
+            "ms": { "type": "integer", "minimum": 1 },
+            "memory": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "WakeRule": {
+      "type": "object",
+      "required": ["reason"],
+      "properties": {
+        "reason": { "enum": ["inbox", "dependency", "timer", "human"] },
+        "port": { "$ref": "#/$defs/Id" },
+        "after": { "type": "integer", "minimum": 0 },
+        "kind": { "enum": ["permission", "question", "auth"] }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "required": ["reason"], "properties": { "reason": { "const": "dependency" } } },
+          "then": { "required": ["port"] }
+        },
+        {
+          "if": { "required": ["reason"], "properties": { "reason": { "const": "timer" } } },
+          "then": { "required": ["after"] }
+        },
+        {
+          "if": { "required": ["reason"], "properties": { "reason": { "const": "human" } } },
+          "then": { "required": ["kind"] }
+        }
+      ]
+    },
+    "Port": {
+      "type": "object",
+      "required": ["id", "direction", "kind", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "direction": { "enum": ["in", "out"] },
+        "kind": { "enum": ["value", "event"] },
+        "type": { "$ref": "#/$defs/BtsType" },
+        "producer": { "enum": ["compute", "process"] },
+        "claimable": { "const": true },
+        "required": { "type": "boolean" },
+        "default": { "$ref": "#/$defs/BtsValue" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": ["direction", "kind"],
+            "properties": { "direction": { "const": "out" }, "kind": { "const": "value" } }
+          },
+          "else": { "not": { "required": ["producer"] } }
+        },
+        {
+          "if": {
+            "required": ["direction", "kind"],
+            "properties": { "direction": { "const": "in" }, "kind": { "const": "event" } }
+          },
+          "else": { "not": { "required": ["claimable"] } }
+        }
+      ]
+    },
+    "Logic": {
+      "type": "object",
+      "properties": {
+        "compute": {
+          "type": "object",
+          "required": ["module", "export", "outputs"],
+          "properties": {
+            "module": { "$ref": "#/$defs/Digest" },
+            "export": { "type": "string", "minLength": 1 },
+            "outputs": { "type": "array", "items": { "$ref": "#/$defs/Id" }, "uniqueItems": true }
+          },
+          "additionalProperties": false
+        },
+        "reduce": {
+          "type": "object",
+          "required": ["module", "export", "handles"],
+          "properties": {
+            "module": { "$ref": "#/$defs/Digest" },
+            "export": { "type": "string", "minLength": 1 },
+            "handles": { "type": "array", "items": { "$ref": "#/$defs/Id" }, "uniqueItems": true }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "TypePackage": {
+      "type": "object",
+      "required": ["id", "version", "digest", "archetype", "state", "config", "ports"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/Digest" },
+        "archetype": {
+          "type": "object",
+          "required": ["geometry", "renderer"],
+          "properties": {
+            "geometry": { "type": "string", "minLength": 1 },
+            "renderer": { "$ref": "#/$defs/DefRef" }
+          },
+          "additionalProperties": false
+        },
+        "state": {
+          "type": "object",
+          "required": ["type", "initial"],
+          "properties": {
+            "type": { "$ref": "#/$defs/BtsType" },
+            "initial": { "$ref": "#/$defs/BtsValue" }
+          },
+          "additionalProperties": false
+        },
+        "config": {
+          "type": "object",
+          "required": ["type", "defaults"],
+          "properties": {
+            "type": { "$ref": "#/$defs/BtsType" },
+            "defaults": { "$ref": "#/$defs/BtsValue" }
+          },
+          "additionalProperties": false
+        },
+        "ports": { "type": "array", "items": { "$ref": "#/$defs/Port" } },
+        "logic": { "$ref": "#/$defs/Logic" }
+      },
+      "additionalProperties": false
+    },
+    "DefinitionManifest": {
+      "type": "object",
+      "required": ["published", "embedded"],
+      "properties": {
+        "published": {
+          "type": "object",
+          "required": ["types", "processes"],
+          "properties": {
+            "types": { "type": "array", "items": { "$ref": "#/$defs/DefRef" } },
+            "processes": { "type": "array", "items": { "$ref": "#/$defs/DefRef" } }
+          },
+          "additionalProperties": false
+        },
+        "embedded": {
+          "type": "object",
+          "required": ["types", "processes"],
+          "properties": {
+            "types": { "type": "array", "items": { "$ref": "#/$defs/TypePackage" } },
+            "processes": { "type": "array", "items": { "$ref": "#/$defs/ProcessDefinition" } }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "World": {
+      "type": "object",
+      "required": [
+        "protocol",
+        "id",
+        "frame",
+        "definitions",
+        "blockies",
+        "composites",
+        "placements",
+        "connections",
+        "runs"
+      ],
+      "properties": {
+        "protocol": { "type": "string", "pattern": "^blockies/0\\.[0-9]+$" },
+        "id": { "$ref": "#/$defs/Id" },
+        "frame": { "$ref": "#/$defs/Frame" },
+        "definitions": { "$ref": "#/$defs/DefinitionManifest" },
+        "blockies": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/Blockie" }
+        },
+        "composites": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/Composite" }
+        },
+        "placements": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/Placement" }
+        },
+        "connections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Connection" }
+        },
+        "runs": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/Run" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

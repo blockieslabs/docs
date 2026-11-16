@@ -1,0 +1,217 @@
+{
+  "protocol": "blockies/0.1",
+  "id": "world_trace_a",
+  "frame": { "id": "frame_main", "space": "2d" },
+  "definitions": {
+    "published": { "types": [], "processes": [] },
+    "embedded": {
+      "types": [
+        {
+          "id": "org.example.pixel",
+          "version": "1.0.0",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "archetype": {
+            "geometry": "cell-1x1",
+            "renderer": { "id": "org.example.render.pixel", "version": "1.0.0", "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111" }
+          },
+          "state": { "type": { "kind": "record", "properties": {}, "additional_properties": false }, "initial": {} },
+          "config": { "type": { "kind": "record", "properties": {}, "additional_properties": false }, "defaults": {} },
+          "ports": []
+        },
+        {
+          "id": "org.example.computer",
+          "version": "1.0.0",
+          "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "archetype": {
+            "geometry": "cell-1x1",
+            "renderer": { "id": "org.example.render.computer", "version": "1.0.0", "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222" }
+          },
+          "state": { "type": { "kind": "record", "properties": {}, "additional_properties": false }, "initial": {} },
+          "config": { "type": { "kind": "record", "properties": {}, "additional_properties": false }, "defaults": {} },
+          "ports": [
+            {
+              "id": "on_press",
+              "direction": "in",
+              "kind": "event",
+              "type": { "kind": "record", "properties": {}, "additional_properties": false },
+              "claimable": true
+            },
+            {
+              "id": "on_pulse",
+              "direction": "out",
+              "kind": "event",
+              "type": { "kind": "record", "properties": {}, "additional_properties": false }
+            },
+            {
+              "id": "result",
+              "direction": "out",
+              "kind": "value",
+              "type": { "kind": "primitive", "name": "boolean" },
+              "producer": "process"
+            }
+          ]
+        },
+        {
+          "id": "org.example.lamp",
+          "version": "1.0.0",
+          "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "archetype": {
+            "geometry": "cell-1x1",
+            "renderer": { "id": "org.example.render.lamp", "version": "1.0.0", "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }
+          },
+          "state": { "type": { "kind": "primitive", "name": "boolean" }, "initial": false },
+          "config": { "type": { "kind": "record", "properties": {}, "additional_properties": false }, "defaults": {} },
+          "ports": [
+            {
+              "id": "lit",
+              "direction": "in",
+              "kind": "value",
+              "type": { "kind": "primitive", "name": "boolean" },
+              "required": true
+            },
+            {
+              "id": "shown",
+              "direction": "out",
+              "kind": "value",
+              "type": { "kind": "primitive", "name": "boolean" },
+              "producer": "compute"
+            }
+          ],
+          "logic": {
+            "compute": {
+              "module": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "export": "compute",
+              "outputs": ["shown"]
+            }
+          }
+        }
+      ],
+      "processes": [
+        {
+          "id": "org.example.press",
+          "version": "1.0.0",
+          "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "stateType": { "kind": "primitive", "name": "boolean" },
+          "host": {
+            "claims": ["on_press"],
+            "reads": [],
+            "publishes": ["result"]
+          },
+          "step": {
+            "runtime": "blockies.js/1",
+            "module": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "export": "step"
+          },
+          "wake": [{ "reason": "inbox" }]
+        }
+      ]
+    }
+  },
+  "blockies": {
+    "pixelA": {
+      "id": "pixelA",
+      "type": { "id": "org.example.pixel", "version": "1.0.0", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      "config": {},
+      "state": {}
+    },
+    "pixelB": {
+      "id": "pixelB",
+      "type": { "id": "org.example.pixel", "version": "1.0.0", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      "config": {},
+      "state": {}
+    },
+    "computerM": {
+      "id": "computerM",
+      "type": { "id": "org.example.computer", "version": "1.0.0", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+      "config": {},
+      "state": {}
+    },
+    "lamp": {
+      "id": "lamp",
+      "type": { "id": "org.example.lamp", "version": "1.0.0", "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+      "config": {},
+      "state": false
+    }
+  },
+  "composites": {
+    "C": {
+      "id": "C",
+      "origin": { "kind": "grouping" },
+      "members": [
+        { "entity": { "blockie": "pixelA" }, "provenance": "grouping" },
+        { "entity": { "blockie": "pixelB" }, "provenance": "grouping" },
+        { "entity": { "blockie": "computerM" }, "provenance": "grouping" }
+      ],
+      "manager": { "run": "R1", "epoch": 1 },
+      "aliases": [
+        {
+          "id": "press",
+          "direction": "in",
+          "kind": "event",
+          "type": { "kind": "record", "properties": {}, "additional_properties": false },
+          "ref": { "member": { "blockie": "computerM" }, "port": "on_press" }
+        },
+        {
+          "id": "lit",
+          "direction": "out",
+          "kind": "value",
+          "type": { "kind": "primitive", "name": "boolean" },
+          "ref": { "member": { "blockie": "computerM" }, "port": "result" }
+        },
+        {
+          "id": "pulse",
+          "direction": "out",
+          "kind": "event",
+          "type": { "kind": "record", "properties": {}, "additional_properties": false },
+          "ref": { "member": { "blockie": "computerM" }, "port": "on_pulse" }
+        }
+      ],
+      "folds": []
+    }
+  },
+  "placements": {
+    "C": {
+      "scope": { "frame": "frame_main" },
+      "transform": { "translate": [0, 0], "scale": 1 }
+    },
+    "pixelA": {
+      "scope": { "composite": "C" },
+      "transform": { "translate": [-1, 0], "scale": 1 }
+    },
+    "pixelB": {
+      "scope": { "composite": "C" },
+      "transform": { "translate": [1, 0], "scale": 1 }
+    },
+    "computerM": {
+      "scope": { "composite": "C" },
+      "transform": { "translate": [0, 0], "scale": 1 }
+    },
+    "lamp": {
+      "scope": { "frame": "frame_main" },
+      "transform": { "translate": [0, 4], "scale": 1 }
+    }
+  },
+  "connections": [
+    {
+      "id": "c1",
+      "from": { "composite": "C", "alias": "lit" },
+      "to": { "blockie": "lamp", "port": "lit" }
+    }
+  ],
+  "runs": {
+    "R1": {
+      "id": "R1",
+      "host": "computerM",
+      "definition": { "id": "org.example.press", "version": "1.0.0", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+      "status": "waiting",
+      "wait": { "reason": "inbox" },
+      "ack": "acknowledged",
+      "state": false,
+      "inbox": [],
+      "grant": {
+        "composite": "C",
+        "memberSet": [{ "blockie": "pixelA" }, { "blockie": "pixelB" }]
+      }
+    }
+  }
+}

@@ -11,6 +11,13 @@ document says so in its header.
    layer may and may not do.
 3. [`architecture/fsm-inventory.md`](architecture/fsm-inventory.md) — every state machine in
    the system, its owner, and the level it latches onto.
+4. [`traces/0001-reference-traces.md`](traces/0001-reference-traces.md) — four scenarios as
+   transaction logs. These are the golden vectors.
+5. [`schema/0001-minimal-model.md`](schema/0001-minimal-model.md) — the derived model, with a
+   traceability table and a list of what was deliberately cut.
+6. [`schema/blockies-0.schema.json`](schema/blockies-0.schema.json) and
+   [`schema/0002-conformance-fixtures.md`](schema/0002-conformance-fixtures.md) — the machine
+   schema and the fixture vectors.
 
 ## What is still missing
 

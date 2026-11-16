@@ -110,7 +110,7 @@ A fold is only legal as the ref of a `value`/`out` alias.
 
 ```ts
 type Placement = {
-  entity: EntityRef;
+  // keyed by entity id in world.placements; the key is authoritative, no embedded id
   scope: { frame: Id } | { composite: Id };   // nearest placed ancestor scope
   transform: { translate: [number, number]; scale: number };
 };
