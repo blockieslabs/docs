@@ -44,15 +44,15 @@ levels; a repository should be created only when a level has something to build.
 
 | Level | Repository | Contents |
 |---|---|---|
-| A0 | `blockiess/spec` | Protocol text, JSON Schemas, conformance fixtures |
-| A1 | `blockiess/core` | Rust document model, validator, transaction engine (WASM-capable) |
-| A2 | `blockiess/adapters` | Script engines, effect executor, simulation services |
-| A3 | `blockiess/host` | Session loop, persistence, views, grants |
-| A4 | `blockiess/render` | Renderers and Type renderer packages |
-| A5 | `blockiess/clients` | CLI, TUI, web, native, mobile |
-| A6 | `blockiess/operators` | Agent adapters, package sources |
+| A0 | `blockieslabs/spec` | Protocol text, JSON Schemas, conformance fixtures |
+| A1 | `blockieslabs/core` | Rust document model, validator, transaction engine (WASM-capable) |
+| A2 | `blockieslabs/adapters` | Script engines, effect executor, simulation services |
+| A3 | `blockieslabs/host` | Session loop, persistence, views, grants |
+| A4 | `blockieslabs/render` | Renderers and Type renderer packages |
+| A5 | `blockieslabs/clients` | CLI, TUI, web, native, mobile |
+| A6 | `blockieslabs/operators` | Agent adapters, package sources |
 
-`blockiess/docs` (this repository) is the design record and sits outside the stack.
+`blockieslabs/docs` (this repository) is the design record and sits outside the stack.
 
 ## Conventions
 

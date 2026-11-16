@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://blockiess.org/schema/0/blockies.schema.json",
+  "$id": "https://blockieslabs.github.io/schema/0/blockies.schema.json",
   "title": "Blockies World",
   "description": "Canonical document shape for a Blockies World (protocol 0.x). BTS type expressions and values are opaque here and validated by the type system.",
   "$ref": "#/$defs/World",
