@@ -1,5 +1,10 @@
 # Blockies — Documentation
 
+> **Start here if you are learning the project:**
+> open [`html/index.html`](html/index.html) in a browser. It is a linked field guide that explains
+> every concept in plain language, with diagrams and a glossary. The markdown below is the
+> engineering record behind it.
+
 Working documentation for the Blockies architecture. Nothing here is frozen unless a
 document says so in its header.
 

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Space and appearance · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
+  <h1>Space and appearance</h1>
+  <p class="lede">Blockies is a visual medium, so position matters to what you see. It matters to
+  nothing else.</p>
+
+  <h2>World, Frame, placement</h2>
+  <p>A World has exactly one <strong>Frame</strong>. The Frame is the root
+  <a class="term" href="../glossary.html#coordinate-scope">coordinate scope</a>: everything
+  ultimately resolves to a position inside it.</p>
+  <p>Placement is <strong>hierarchical and local</strong>. An entity's position is relative to its
+  nearest placed ancestor: its Composite if it has one, otherwise the Frame. Moving a Composite
+  moves everything inside it without touching a single member coordinate.</p>
+
+  <div class="mermaid">
+flowchart TB
+  F["Frame<br/>root scope"] --> C["Composite C<br/>has its own transform"]
+  C --> B1["member<br/>local coordinates"]
+  C --> B2["member<br/>local coordinates"]
+  F --> B3["standalone Blockie<br/>frame coordinates"]
+  B2 -. "no placement record" .-> X["unplaced: exists,<br/>not drawn, still countable"]
+  </div>
+
+  <h2>The transform</h2>
+  <p>A placement is a translation plus a <strong>uniform</strong> scale. No rotation, and no
+  non-uniform scale.</p>
+  <div class="callout">
+    <span class="label">Why no rotation</span>
+    <p>Rotation composed with non-uniform scale is not closed: rotating a stretched object and then
+    moving it into a differently stretched scope cannot always be expressed as one placement. Rather
+    than have reparenting silently deform things, rotation is simply not in the model yet.</p>
+  </div>
+
+  <h2>Unplaced is a state, not a null</h2>
+  <p>An entity may have <em>no</em> placement record. That is different from a placement whose
+  value is null — the protocol keeps absent and null distinct everywhere.</p>
+  <p>Unplaced means: no coordinate, not drawn, not clickable, contributes nothing to any footprint.
+  It still exists, it is still a member if it belongs to something, and it can still be counted and
+  promoted.</p>
+
+  <div class="callout warn">
+    <span class="label">The cascade rule</span>
+    <p>An unplaced Composite has no origin, so its members cannot resolve to world coordinates.
+    They are not drawn, even if they have placement records of their own. To show a member, place
+    its scope first.</p>
+  </div>
+
+  <h2>Draw order</h2>
+  <ul>
+    <li>A Composite's body and chrome draw <em>beneath</em> its members.</li>
+    <li>Among members of one scope, order is the placement's <code>layer</code>, then the entity id.</li>
+  </ul>
+  <p>Layer is presentation data. It never affects behaviour.</p>
+
+  <h2>Footprint</h2>
+  <p>A Composite's <a class="term" href="../glossary.html#footprint">footprint</a> is
+  <strong>derived</strong> from where its members actually are. It is not stored, and it does not
+  decide membership. A Composite can be spatially disconnected, with gaps, and that means
+  nothing.</p>
+
+  <h2>The rule that keeps it honest</h2>
+  <div class="callout good">
+    <span class="label">Geometry is semantically inert</span>
+    <p>Placement may change what you see. It may never change what happens. Randomising every
+    coordinate in a World must leave its execution trace identical.</p>
+  </div>
+  <p>This is why "drag two Blockies together" does not make them a Composite, "put a supervisor
+  next to a group" does not make it a manager, and reordering members in space does not reorder
+  behaviour.</p>
+
+  <h2>What draws a Composite?</h2>
+  <p>A Blockie's appearance comes from its Type. A Composite has no Type, so it carries an optional
+  presentation record instead:</p>
+  <table>
+    <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>label</code></td><td>A human name, shown in chrome and inspectors.</td></tr>
+      <tr><td><code>renderer</code></td><td>A <em>renderer package</em> — drawing only, not a Type.</td></tr>
+      <tr><td><code>body</code></td><td>An optional member that visually stands for the assembly.</td></tr>
+    </tbody>
+  </table>
+  <p>With no presentation record, the session's default composite renderer draws bounds and the id.
+  That default has to look reasonable, because most Composites will have nothing else.</p>
+
+  <h3>Three rules about appearance</h3>
+  <ul>
+    <li><strong>Chrome is never interactive.</strong> Only Blockies are clickable. A decorative
+    surface has no owner, so no authority could attach to it.</li>
+    <li><strong>A Composite's own appearance is static.</strong> A Run never writes it. If it needs
+    to change, a <em>member</em> changes.</li>
+    <li><strong>Style is not in the document.</strong> Typography, materials, corner radii belong to
+    the renderer package.</li>
+  </ul>
+
+  <h2>Views are cameras</h2>
+  <p>There is one World and one placement tree. A view is a camera framing a region, plus a
+  renderer, plus a grant scope. Views do not copy entities and do not reflow the layout.</p>
+  <p>That is why a presenter screen and an audience phone can show different parts of the same
+  World without duplicating anything.</p>
+
+  <div class="card">
+    <h3>Terms on this page</h3>
+    <ul class="small">
+      <li><strong>Frame</strong> — the root coordinate scope.</li>
+      <li><strong>Coordinate scope</strong> — the thing a position is relative to.</li>
+      <li><strong>Transform</strong> — translation plus uniform scale.</li>
+      <li><strong>Footprint</strong> — the derived bounds of an assembly.</li>
+      <li><strong>Chrome</strong> — decorative bounds, label, and affordances around an assembly.</li>
+      <li><strong>Renderer package</strong> — a drawing-only plugin, not a Type.</li>
+    </ul>
+  </div>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>You move a Composite two cells right. What changes?</summary>
+      <p>Only the Composite's transform. Member local coordinates are untouched, and no identity,
+      state, or membership changes.</p>
+    </details>
+    <details>
+      <summary>A member has a placement but is not drawn. Why?</summary>
+      <p>Its Composite is unplaced, so there is no origin to resolve against. Placing the scope
+      first brings the member back.</p>
+    </details>
+    <details>
+      <summary>Why can't clicking a Composite's surface fire an event?</summary>
+      <p>Because the surface has no owner and no ports. Interaction must resolve to a Blockie's port
+      or to a Composite alias that points at one.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="types.html">← Types, state and ports</a>
+    <a href="composites.html">Next: composites →</a>
+  </div>
+</main>
+<script src="../assets/vendor/mermaid.min.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision log · Blockies</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body data-root=".">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="index.html">Blockies</a> / Reference</p>
+  <h1>Decision log</h1>
+  <p class="lede">Forty-five decisions, each recording what was chosen and why. The log is
+  append-only: a later decision supersedes an earlier one, it never rewrites it.</p>
+
+  <p>Read a decision as: <em>what changed</em>, and <em>what would have gone wrong otherwise</em>.
+  Two are superseded and kept deliberately, because the trail explains why the final answer is what
+  it is.</p>
+
+  <div class="callout">
+    <span class="label">How to use this page</span>
+    <p>Skim the titles. When one surprises you, follow its link into the concept page. The concept
+    pages teach the model; this page explains the choices behind it.</p>
+  </div>
+
+  <h2>Foundations</h2>
+
+  <div class="dec" id="d-001"><span class="id">D-001</span> <span class="badge">active</span>
+    <h3>Grouping and instantiation are different operations</h3>
+    <p>Ad-hoc assembly keeps identities and stays mutable; instantiating a template creates fresh
+    identities and freezes topology. One operation cannot serve both, because agents need to
+    rearrange things constantly and reusable pieces need to be reproducible.
+    <a href="concepts/composites.html">Composites</a></p>
+  </div>
+
+  <div class="dec" id="d-002"><span class="id">D-002</span> <span class="badge">active</span>
+    <h3>Run state is separate from host Model State</h3>
+    <p>Otherwise one Blockie has two writers and "what is the value" depends on timing.
+    <a href="concepts/processes.html">Processes</a></p>
+  </div>
+
+  <div class="dec" id="d-003"><span class="id">D-003</span> <span class="badge">active</span>
+    <h3>Composites may be static</h3>
+    <p>A Composite does not need a manager to be useful. Interface wiring is declarative; only
+    coordination needs a computing member. <a href="concepts/composites.html">Composites</a></p>
+  </div>
+
+  <div class="dec" id="d-004"><span class="id">D-004</span> <span class="badge">active</span>
+    <h3>Explicit state, with two bounds</h3>
+    <p>Every state that carries transition authority is explicit. Derived projections and view
+    ephemera are not state, and storing them guarantees two writers.
+    <a href="concepts/runtime.html">Runtime</a></p>
+  </div>
+
+  <div class="dec" id="d-005"><span class="id">D-005</span> <span class="badge gone">superseded by D-013</span>
+    <h3>Every managed process is represented</h3>
+    <p>The intent survived; the mechanism did not. A boolean became stage/backstage, which became
+    nullable placement. <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-006"><span class="id">D-006</span> <span class="badge">active</span>
+    <h3>Geometry is semantically inert</h3>
+    <p>Placement may change what you see, never what happens. Randomising every coordinate must
+    leave the execution trace identical. <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-013"><span class="id">D-013</span> <span class="badge">active</span>
+    <h3>Host is mandatory, placement is nullable</h3>
+    <p>The host Blockie is a Run's interface to the World, not its picture. Hiding a Run is a
+    placement change, not a deletion. <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-034"><span class="id">D-034</span> <span class="badge">active</span>
+    <h3>Absence encodes unplaced and dissolved</h3>
+    <p>Absent and null are different values everywhere, so a missing placement must be missing.
+    <a href="concepts/schema.html">The document</a></p>
+  </div>
+
+  <h2>Composites</h2>
+
+  <div class="dec" id="d-015"><span class="id">D-015</span> <span class="badge">active</span>
+    <h3>A Composite interface is an alias table</h3>
+    <p>No second port system. Aliases point at member ports or folds and hold no state, so there is
+    nothing to keep in sync. <a href="concepts/composites.html">Composites</a></p>
+  </div>
+
+  <div class="dec" id="d-018"><span class="id">D-018</span> <span class="badge">active</span>
+    <h3>Management grants dispatch, nothing else</h3>
+    <p>Everything else a manager needs already works through ordinary ports. The one thing static
+    wiring cannot express is choosing which member to poke at runtime.
+    <a href="concepts/composites.html">Composites</a></p>
+  </div>
+
+  <div class="dec" id="d-025"><span class="id">D-025</span> <span class="badge">active</span>
+    <h3>Fork rewrites provenance; save-as captures structure only</h3>
+    <p>Forking an instantiated Composite must not leave edges claiming a template that no longer
+    applies. Saving a grouping captures structure and config, never state.
+    <a href="concepts/composites.html">Composites</a></p>
+  </div>
+
+  <div class="dec" id="d-026"><span class="id">D-026</span> <span class="badge">active</span>
+    <h3>Empty Composites dissolve; folds revalidate</h3>
+    <p>A committed Composite always has at least one member. A fold whose member set changed must be
+    revalidated in the same transaction. <a href="concepts/composites.html">Composites</a></p>
+  </div>
+
+  <div class="dec" id="d-032"><span class="id">D-032</span> <span class="badge">active</span>
+    <h3>Dispatch is not a Composite alias source</h3>
+    <p>Exposing it would let external actors address members directly, which is exactly what the
+    boundary exists to prevent. <a href="concepts/composites.html">Composites</a></p>
+  </div>
+
+  <div class="dec" id="d-033"><span class="id">D-033</span> <span class="badge">active</span>
+    <h3>The dispatch endpoint is a grant, not a port</h3>
+    <p>No new port kind, no addressed port. The grant carries a member set, so possible routes stay
+    statically validatable. <a href="concepts/processes.html">Processes</a></p>
+  </div>
+
+  <div class="dec" id="d-035"><span class="id">D-035</span> <span class="badge">active</span>
+    <h3>Composite presentation is a record, not a Type</h3>
+    <p>A Composite has no Type, so it carries a label, an optional renderer package, and an optional
+    body member. Never styling, never a hidden Type.
+    <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-036"><span class="id">D-036</span> <span class="badge">active</span>
+    <h3>Chrome is never interactive</h3>
+    <p>A decorative surface has no owner, so no authority can attach to it. Only Blockies are
+    hit-tested. <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-037"><span class="id">D-037</span> <span class="badge">active</span>
+    <h3>A Composite's own appearance is static per revision</h3>
+    <p>A Run never writes the document. Anything dynamic must be a member that renders the change.
+    <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-038"><span class="id">D-038</span> <span class="badge">active</span>
+    <h3>Members draw above the assembly; layer orders members</h3>
+    <p>Overlapping members had no defined order at all until presentation work exposed it.
+    <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <h2>Processes</h2>
+
+  <div class="dec" id="d-016"><span class="id">D-016</span> <span class="badge">active</span>
+    <h3>Claim routing decides reducer versus run</h3>
+    <p>An event input is reducer-owned or run-owned, never both, so nothing is handled twice.
+    <a href="concepts/processes.html#claims">Processes</a></p>
+  </div>
+
+  <div class="dec" id="d-017"><span class="id">D-017</span> <span class="badge">active</span>
+    <h3>Host output ports declare their producer</h3>
+    <p>Compute or process, never both, and an unattached process port is unavailable rather than
+    stale. <a href="concepts/types.html">Types</a></p>
+  </div>
+
+  <div class="dec" id="d-029"><span class="id">D-029</span> <span class="badge">active</span>
+    <h3>Process phase scheduling and failure classes</h3>
+    <p>Ready runs are FIFO, one step each per transaction, and execution failure is local while
+    contract violation is fatal. <a href="concepts/processes.html">Processes</a></p>
+  </div>
+
+  <div class="dec" id="d-030"><span class="id">D-030</span> <span class="badge">active</span>
+    <h3>Runs never observe mid-transaction values</h3>
+    <p>Values stabilise after the process phase, so a step always reads one coherent generation.
+    Glitch-freedom by construction. <a href="concepts/processes.html">Processes</a></p>
+  </div>
+
+  <div class="dec" id="d-039"><span class="id">D-039</span> <span class="badge">active</span>
+    <h3>The step result is a three-way outcome</h3>
+    <p>Terminal, waiting, or continue. The third case is how loops are expressed without a special
+    flag. <a href="concepts/processes.html">Processes</a></p>
+  </div>
+
+  <div class="dec" id="d-040"><span class="id">D-040</span> <span class="badge">active</span>
+    <h3>The step context includes configuration, never host state</h3>
+    <p>Configuration is declared and construction-shaped; Model State changes under the reducer and
+    would have no dependency edge. <a href="concepts/processes.html">Processes</a></p>
+  </div>
+
+  <h2>Space and views</h2>
+
+  <div class="dec" id="d-007"><span class="id">D-007</span> <span class="badge">active</span>
+    <h3>One World, global placement, views are cameras</h3>
+    <p>A view frames a region; it does not copy or reflow. That is how a presenter screen and an
+    audience phone show different parts of one World. <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-008"><span class="id">D-008</span> <span class="badge gone">superseded by D-013</span>
+    <h3>Representation is stage/backstage</h3>
+    <p>The step where "not drawn" stopped being a run state. Kept because the lineage explains the
+    final answer. <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-022"><span class="id">D-022</span> <span class="badge">active</span>
+    <h3>Hierarchical local coordinates, translation and uniform scale</h3>
+    <p>Rotation composed with non-uniform scale is not closed, so rotation is deferred rather than
+    made lossy. <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-023"><span class="id">D-023</span> <span class="badge">active</span>
+    <h3>Placement operations are atomic</h3>
+    <p>Group move, reparent, assign, clear, dissolve-convert. A partially moved group is a corrupt
+    World. <a href="concepts/space.html">Space</a></p>
+  </div>
+
+  <div class="dec" id="d-024"><span class="id">D-024</span> <span class="badge">active</span>
+    <h3>Camera and grant scope are unrelated</h3>
+    <p>Framing a region confers nothing. Authority is an explicit set of entities, ports, and verbs.
+    <a href="concepts/relationships.html">Relationships</a></p>
+  </div>
+
+  <h2>Data and status</h2>
+
+  <div class="dec" id="d-010"><span class="id">D-010</span> <span class="badge">active</span>
+    <h3>Status is a projection with many dialects</h3>
+    <p>One internal status, many exporters. Terminal-status protocols are lossy in different ways,
+    and the World's vocabulary is richer. <a href="concepts/ontology.html">Entities</a></p>
+  </div>
+
+  <div class="dec" id="d-014"><span class="id">D-014</span> <span class="badge">active</span>
+    <h3>Primary status is derived, never declared</h3>
+    <p>A declared status can lie; an observed one cannot. <a href="concepts/ontology.html">Entities</a></p>
+  </div>
+
+  <div class="dec" id="d-019"><span class="id">D-019</span> <span class="badge">active</span>
+    <h3>One status chain: registry, mode, display</h3>
+    <p>Registry states project to occupied/vacant, then to seven display words. "Computing" was
+    retired because a queued run is not computing. <a href="concepts/ontology.html">Entities</a></p>
+  </div>
+
+  <div class="dec" id="d-020"><span class="id">D-020</span> <span class="badge">active</span>
+    <h3>Value equality is typed</h3>
+    <p>Propagation depends on knowing whether a value changed. Decimal equality is numeric, so a
+    scale-only change does not propagate. <a href="concepts/runtime.html">Runtime</a></p>
+  </div>
+
+  <div class="dec" id="d-021"><span class="id">D-021</span> <span class="badge">active</span>
+    <h3>Inputs resolve from the staged generation</h3>
+    <p>A downstream computation must not read last generation's value when this transaction already
+    changed it. <a href="concepts/runtime.html">Runtime</a></p>
+  </div>
+
+  <h2>Relationships</h2>
+
+  <div class="dec" id="d-009"><span class="id">D-009</span> <span class="badge">active</span>
+    <h3>Attention is derived, not an entity</h3>
+    <p>Who is looking is a function of sessions and bindings. A separate entity would be a second
+    truth about who is working on what. <a href="concepts/relationships.html">Relationships</a></p>
+  </div>
+
+  <div class="dec" id="d-031"><span class="id">D-031</span> <span class="badge">active</span>
+    <h3>Attention is bindings plus sessions</h3>
+    <p>Completes D-009: an in-world supervisor attends through its input bindings, not a session.
+    <a href="concepts/relationships.html">Relationships</a></p>
+  </div>
+
+  <h2>Performance and aggregation</h2>
+
+  <div class="dec" id="d-011"><span class="id">D-011</span> <span class="badge">active</span>
+    <h3>Declared graph, not runtime signal tracking</h3>
+    <p>A declared dependency graph is a signal graph that can be serialised, validated, and shared.
+    Runtime read-tracking cannot. <a href="concepts/runtime.html">Runtime</a></p>
+  </div>
+
+  <div class="dec" id="d-012"><span class="id">D-012</span> <span class="badge">active</span>
+    <h3>Aggregation is declared; implicit fan-in stays forbidden</h3>
+    <p>Spreadsheets need <code>SUM(A1:A10)</code>, which is many-into-one. A declared fold gives it
+    without reopening the door to implicit merging. <a href="concepts/composites.html">Composites</a></p>
+  </div>
+
+  <h2>Definitions and language</h2>
+
+  <div class="dec" id="d-027"><span class="id">D-027</span> <span class="badge">active</span>
+    <h3>JS/TS first, WASM second, no native libraries</h3>
+    <p>In an agent-operated platform the authoring language is the one agents write best. WASM covers
+    performance; native libraries would break the sandbox and portability at once.
+    <a href="concepts/processes.html">Processes</a></p>
+  </div>
+
+  <div class="dec" id="d-028"><span class="id">D-028</span> <span class="badge">active</span>
+    <h3>Terminology and retention</h3>
+    <p>Published versus embedded definitions, run retention, and the list of amendments to the
+    original handoff. <a href="concepts/schema.html">The document</a></p>
+  </div>
+
+  <h2>Authority</h2>
+
+  <div class="dec" id="d-042"><span class="id">D-042</span> <span class="badge">active</span>
+    <h3>Policy is a template in the World; bindings are session state</h3>
+    <p>A World must carry its rules to be portable; identities are deployment-specific.
+    <a href="concepts/relationships.html">Relationships</a></p>
+  </div>
+
+  <div class="dec" id="d-043"><span class="id">D-043</span> <span class="badge">active</span>
+    <h3>Four verbs, three scopes, deny by default</h3>
+    <p><code>deliver</code>, <code>read</code>, <code>mutate</code>, <code>run</code> over world,
+    entities, or endpoints. A grant on a Composite never reaches its members.
+    <a href="concepts/relationships.html">Relationships</a></p>
+  </div>
+
+  <div class="dec" id="d-044"><span class="id">D-044</span> <span class="badge">active</span>
+    <h3>Authority is checked once, at the boundary</h3>
+    <p>Re-checking per hop would make delegation impossible and authority depend on route shape.
+    <a href="concepts/relationships.html">Relationships</a></p>
+  </div>
+
+  <div class="dec" id="d-045"><span class="id">D-045</span> <span class="badge">active</span>
+    <h3>The file holder is not governed by policy</h3>
+    <p>Whoever opens a World can edit it, including its policy. This is a multi-party session model,
+    not a sandbox for untrusted documents. <a href="concepts/relationships.html">Relationships</a></p>
+  </div>
+
+  <h2>Validation</h2>
+
+  <div class="dec" id="d-041"><span class="id">D-041</span> <span class="badge">active</span>
+    <h3>Repair is limited to dangling designation</h3>
+    <p>Everything rejects except a manager designation left dangling by a crash, which is cleared
+    with a diagnostic. <a href="concepts/schema.html">The document</a></p>
+  </div>
+
+  <div class="next">
+    <a href="concepts/schema.html">← The document</a>
+    <a href="glossary.html">Next: glossary →</a>
+  </div>
+</main>
+<script src="assets/vendor/mermaid.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

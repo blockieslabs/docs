@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Types, state and ports · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
+  <h1>Types, state and ports</h1>
+  <p class="lede">A Type is the blueprint a Blockie is made from. It decides what the Blockie looks
+  like, what data it holds, and what it can talk to.</p>
+
+  <h2>A blueprint, not a thing</h2>
+  <p>A <a class="term" href="../glossary.html#type-package">Type package</a> is immutable and
+  <a class="term" href="../glossary.html#digest">digest-pinned</a>: a World refers to one exact
+  version, and changing the Type means publishing a new version. Nothing silently updates
+  underneath a running World.</p>
+
+  <div class="mermaid">
+flowchart TB
+  T["Type package<br/>immutable, digest-pinned"] --> A["archetype<br/>shape + renderer package"]
+  T --> S["state schema + initial value"]
+  T --> C["config schema + defaults"]
+  T --> P["ports"]
+  T --> L["logic: compute and reduce<br/>optional, pure"]
+  P --> V["value ports<br/>in and out"]
+  P --> E["event ports<br/>in and out"]
+  V --> PR["value output may declare<br/>producer: compute or process"]
+  E --> CL["event input may declare<br/>claimable: true"]
+  </div>
+
+  <h2>Three kinds of data</h2>
+  <p>This is the most common source of confusion, so it gets a table.</p>
+  <table>
+    <thead><tr><th>Data</th><th>Belongs to</th><th>Changes how</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Configuration</strong></td>
+        <td>the Blockie</td>
+        <td>edited by an actor</td>
+        <td>"currency: IDR", "label: Revenue"</td>
+      </tr>
+      <tr>
+        <td><strong>Model State</strong></td>
+        <td>the Blockie</td>
+        <td>only through its own reducer</td>
+        <td>a counter's current count</td>
+      </tr>
+      <tr>
+        <td><strong>Run state</strong></td>
+        <td>a Run</td>
+        <td>only by that Run's steps</td>
+        <td>a worker's current plan, checkpointed</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>They are separate on purpose. If a Run could write the Blockie's Model State, one entity would
+  have two writers, and "what is the value" would depend on timing. See
+  <a href="processes.html">Processes</a>.</p>
+
+  <h2>Ports: the only way in or out</h2>
+  <p>A port is a typed socket. Every port has a <strong>direction</strong> and a
+  <strong>kind</strong>.</p>
+
+  <table>
+    <thead><tr><th>Kind</th><th>Means</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>value</strong></td>
+        <td>the latest information, like a variable</td>
+        <td><code>result: boolean</code></td>
+      </tr>
+      <tr>
+        <td><strong>event</strong></td>
+        <td>a discrete occurrence, like a message</td>
+        <td><code>on_press: {}</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>An event is not a value that happens to be true right now. "The button was pressed" cannot be
+  represented by a boolean that stays true, because the second press would be invisible. That is
+  why the two kinds exist.</p>
+
+  <h2>Who produces a value</h2>
+  <p>A value output declares exactly one <a class="term" href="../glossary.html#producer">producer</a>:</p>
+  <ul>
+    <li><code>compute</code> — the Type's own pure function produces it;</li>
+    <li><code>process</code> — only an attached Run may publish to it.</li>
+  </ul>
+  <p>One producer, never both. If both could write, the value would depend on execution order. A
+  <code>process</code> port with no attached Run is <strong>unavailable</strong>, and its consumers
+  are blocked — never a stale value, never a default.</p>
+
+  <h2>Who may own an input</h2>
+  <p>An event input may declare <code>claimable: true</code>. That means an attached Run may take
+  ownership of it: deliveries go to the Run's inbox instead of the Blockie's reducer. It is
+  exclusive — reducer-owned or run-owned, never both.</p>
+  <p>This is the mechanism that stops an event from being handled twice. Full story in
+  <a href="processes.html#claims">Processes → claims</a>.</p>
+
+  <h2>Compute and reduce</h2>
+  <p>A Type may supply two optional functions.</p>
+  <div class="card">
+    <h3>compute</h3>
+    <p>Takes state, config, and input values. Returns output values. It cannot change state, emit
+    events, or talk to the outside world.</p>
+  </div>
+  <div class="card">
+    <h3>reduce</h3>
+    <p>Takes state, config, and one event. Returns the complete next state, plus any events,
+    dispatches, and effect requests. It changes only its own Blockie's state.</p>
+  </div>
+
+  <div class="callout">
+    <span class="label">Pure</span>
+    <p>A function is <a class="term" href="../glossary.html#pure">pure</a> when the same inputs
+    always produce the same outputs and nothing outside is touched. No clock, no randomness, no
+    network. Purity is what makes a World reproducible: two machines given the same inputs must
+    agree.</p>
+  </div>
+
+  <h2>Types of values</h2>
+  <p>Values are described by the Blockies Type System: primitives like <code>integer</code> and
+  <code>decimal</code>, and composite types like records, arrays, and unions. Two rules matter for
+  learning:</p>
+  <ul>
+    <li><strong>Assignability</strong> — a connection is legal only if every value the source can
+    produce is accepted by the target. Direction matters: <code>integer</code> fits
+    <code>number</code>, not the other way round.</li>
+    <li><strong>No implicit conversion</strong> — <code>"1.5"</code> never becomes
+    <code>1.5</code>. A silent conversion is a bug that appears months later, so a conversion must
+    be an explicit Blockie.</li>
+  </ul>
+
+  <div class="card">
+    <h3>Terms on this page</h3>
+    <ul class="small">
+      <li><strong>Type package</strong> — the immutable blueprint for a Blockie.</li>
+      <li><strong>Archetype</strong> — the visual shape plus which renderer package draws it.</li>
+      <li><strong>Digest</strong> — a content hash that pins an exact version.</li>
+      <li><strong>Pure</strong> — same inputs, same outputs, no side effects.</li>
+      <li><strong>Producer</strong> — the one thing allowed to write a value output.</li>
+      <li><strong>Assignability</strong> — whether a source type safely fits a target type.</li>
+    </ul>
+  </div>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Why can't a Type have both compute and a Run producing the same output?</summary>
+      <p>Because then two writers decide the value, and the result would depend on which ran last.
+      The <code>producer</code> declaration forces the choice to be made once, at design time.</p>
+    </details>
+    <details>
+      <summary>What happens to a <code>process</code> output when its Run finishes?</summary>
+      <p>It becomes unavailable. Consumers are blocked rather than reading the last value, because
+      the last value no longer describes anything that exists.</p>
+    </details>
+    <details>
+      <summary>Why is "no implicit conversion" a feature?</summary>
+      <p>Because coercion hides mistakes. A World where <code>"1.5"</code> silently becomes a number
+      will eventually produce a wrong chart with no error anywhere.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="ontology.html">← Entities and identity</a>
+    <a href="space.html">Next: space and appearance →</a>
+  </div>
+</main>
+<script src="../assets/vendor/mermaid.min.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blockies, explained</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body data-root=".">
+<div id="nav"></div>
+<main>
+  <p class="crumb">Start here</p>
+  <h1>Blockies, explained</h1>
+  <p class="lede">Blockies is a <strong>visual world made of small, fixed-shape pieces</strong> that
+  AI agents arrange and operate. The pieces are deliberately limited. The arrangements are not.</p>
+
+  <p>This guide teaches the architecture from the ground up. Every term is defined where it first
+  appears and again in the <a href="glossary.html">glossary</a>. If you only read one page, read
+  this one.</p>
+
+  <h2>The thirty-second version</h2>
+  <ol>
+    <li><strong>One kind of inhabitant.</strong> A <a class="term" href="concepts/ontology.html#blockie">Blockie</a>
+      is a small entity with a fixed visual shape, an identity, some state, and typed ports. It
+      never changes into a different shape to mean something else.</li>
+    <li><strong>Shape comes from composition.</strong> Bigger, more expressive things are built by
+      grouping Blockies — never by inventing new primitives at runtime.</li>
+    <li><strong>Activity is a separate thing.</strong> A <a class="term" href="concepts/processes.html#run">Run</a>
+      is a long-lived, pausable activity. It lives <em>inside</em> a Blockie, which represents it.</li>
+    <li><strong>Grouping is not a Blockie.</strong> A <a class="term" href="concepts/composites.html">Composite</a>
+      is an assembly with membership, an optional manager, and a public face. It has no shape of
+      its own.</li>
+    <li><strong>Relationships never imply each other.</strong> Being near something, belonging to
+      something, controlling something, and observing something are four different facts.</li>
+  </ol>
+
+  <div class="mermaid">
+flowchart TB
+  W["World<br/>one document, one space"] --> F["Frame<br/>the coordinate space"]
+  W --> B["Blockies<br/>the inhabitants"]
+  W --> C["Composites<br/>the assemblies"]
+  W --> R["Runs<br/>the activities"]
+  C --> M["members"]
+  M --> B
+  R --> H["host Blockie"]
+  H --> B
+  D["Definitions<br/>Type packages and process definitions"] -. "pinned blueprints" .-> B
+  D -.-> R
+  </div>
+
+  <h2>What problem is this solving?</h2>
+  <p>An AI agent is good at arranging things and bad at inventing a consistent visual language on
+  the fly. If every agent could invent its own shapes, two Worlds would never look like they came
+  from the same system, and nothing would be reusable.</p>
+  <p>So the vocabulary is fixed and versioned. Agents get <em>expression</em> from arrangement,
+  grouping, and behaviour — not from new primitives. That trade is the whole design.</p>
+
+  <div class="callout">
+    <span class="label">The central principle</span>
+    <p>A small, deliberately designed vocabulary of Blockie Types; complex and expressive
+    visualizations emerge through composition and interaction.</p>
+  </div>
+
+  <h2>The cast of characters</h2>
+  <table>
+    <thead><tr><th>Thing</th><th>What it is</th><th>What it is not</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a class="term" href="concepts/ontology.html#blockie">Blockie</a></td>
+        <td>A persistent inhabitant: identity, one Type, config, state, optional placement.</td>
+        <td>Not a program, not a mode, not a container.</td>
+      </tr>
+      <tr>
+        <td><a class="term" href="concepts/composites.html">Composite</a></td>
+        <td>An explicit assembly of Blockies and nested Composites.</td>
+        <td>Not a Blockie, not a Type, has no ports of its own.</td>
+      </tr>
+      <tr>
+        <td><a class="term" href="concepts/processes.html#run">Run</a></td>
+        <td>A managed activity: resumable, cancellable, observable.</td>
+        <td>Not a thread, not a Blockie, not a function call.</td>
+      </tr>
+      <tr>
+        <td><a class="term" href="concepts/types.html">Type package</a></td>
+        <td>An immutable blueprint: shape, ports, schemas, optional logic.</td>
+        <td>Not an instance, not mutable, not a Composite.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>The one rule that explains most of the design</h2>
+  <p>These are separate facts. The architecture spends most of its effort keeping them separate,
+  because collapsing any two of them produces a system that looks fine in a demo and breaks when
+  agents operate it.</p>
+  <table>
+    <thead><tr><th>Relationship</th><th>Answers</th><th>Must never imply</th></tr></thead>
+    <tbody>
+      <tr><td>Placement</td><td>Where is it?</td><td>Membership or control</td></tr>
+      <tr><td>Membership</td><td>What is it part of?</td><td>Ownership of its activity</td></tr>
+      <tr><td>Management</td><td>Who coordinates this assembly?</td><td>Access to member internals</td></tr>
+      <tr><td>Hosting</td><td>Which Blockie represents this activity?</td><td>Membership</td></tr>
+      <tr><td>Parentage</td><td>Which activity spawned which?</td><td>Grouping or authority</td></tr>
+      <tr><td>Communication</td><td>What talks to what?</td><td>Permission</td></tr>
+      <tr><td>Attention</td><td>What is being watched?</td><td>Access or control</td></tr>
+      <tr><td>Authority</td><td>Who may act?</td><td>Attention or membership</td></tr>
+    </tbody>
+  </table>
+  <p>Full treatment: <a href="concepts/relationships.html">Relationships and authority</a>.</p>
+
+  <h2>Three ways through these docs</h2>
+  <div class="card">
+    <h3>I want to understand the idea</h3>
+    <p class="small">≈ 40 minutes</p>
+    <p><a href="concepts/ontology.html">Entities</a> → <a href="concepts/space.html">Space</a> →
+    <a href="concepts/composites.html">Composites</a> → <a href="concepts/processes.html">Processes</a>
+    → <a href="concepts/relationships.html">Relationships</a></p>
+  </div>
+  <div class="card">
+    <h3>I want to build something</h3>
+    <p class="small">≈ 1 hour</p>
+    <p><a href="concepts/types.html">Types and ports</a> → <a href="concepts/processes.html">Processes</a>
+    → <a href="concepts/runtime.html">The runtime</a> → <a href="concepts/schema.html">The document</a>
+    → <a href="decisions.html">Decision log</a></p>
+  </div>
+  <div class="card">
+    <h3>I want to know why it is like this</h3>
+    <p class="small">≈ 90 minutes</p>
+    <p><a href="decisions.html">Decision log</a> → <a href="concepts/relationships.html">Relationships</a>
+    → <a href="glossary.html">Glossary</a></p>
+  </div>
+
+  <h2>How the documents fit together</h2>
+  <p>There are six kinds of document in the repository. They serve different readers and none of
+  them overrides another.</p>
+  <table>
+    <thead><tr><th>Kind</th><th>Answers</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>This guide</td><td>How does it work, in plain language?</td><td><code>docs/html/</code></td></tr>
+      <tr><td>Decisions</td><td>Why is it this way, and what changed?</td><td><code>docs/decisions/</code></td></tr>
+      <tr><td>Specifications</td><td>What is normative?</td><td><code>docs/specs/</code></td></tr>
+      <tr><td>Traces</td><td>What actually happens, step by step?</td><td><code>docs/traces/</code></td></tr>
+      <tr><td>Schema</td><td>What shape is the document?</td><td><code>docs/schema/</code></td></tr>
+      <tr><td>FSM inventory</td><td>What states exist and who owns them?</td><td><code>docs/architecture/fsm-inventory.md</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="label">Status</span>
+    <p>This is a working design, not a frozen specification. The model is complete enough to
+    implement against, and every decision is recorded. Three things are still unwritten: the
+    <strong>effects</strong> protocol, the <strong>canonical encoding</strong> used for digests, and
+    an <strong>ontology glossary</strong> in the repo (this guide's glossary is the closest thing).
+    Where the old v0.1 documents disagree with this guide, this guide is current.</p>
+  </div>
+
+  <div class="next">
+    <a href="concepts/ontology.html">Next: entities and identity →</a>
+    <a href="glossary.html">Glossary</a>
+  </div>
+</main>
+<script src="assets/vendor/mermaid.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Composites · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
+  <h1>Composites</h1>
+  <p class="lede">A Composite is an assembly. It is not a Blockie, it has no shape of its own, and
+  it owns no ports. That sounds like a weakness until you see what it buys.</p>
+
+  <h2>What it is</h2>
+  <p>A Composite holds <strong>membership edges</strong> to Blockies and to other Composites, an
+  <strong>alias table</strong> describing its public face, optional <strong>folds</strong>, an
+  optional <strong>manager</strong> designation, and an optional presentation record.</p>
+
+  <div class="mermaid">
+flowchart TB
+  subgraph C["Composite: Button"]
+    M1["pixelA<br/>drawing member"]
+    M2["computerM<br/>occupied by R1"]
+    M3["pixelB<br/>drawing member"]
+  end
+  A1["public event: press"] --> M2
+  M2 --> A2["public value: lit"]
+  A2 --> L["lamp<br/>outside the Composite"]
+  R["Run R1"] -. "hosted by" .-> M2
+  G["manager designation<br/>R1 holds dispatch"] -.-> C
+  </div>
+
+  <p>Three drawing Blockies would look the same. The difference is that the middle one hosts a Run,
+  and the assembly exposes two endpoints. That is the entire "button".</p>
+
+  <h2>Membership</h2>
+  <ul>
+    <li><strong>Explicit.</strong> Being next to something, or looking like it, never creates
+    membership.</li>
+    <li><strong>One parent.</strong> A Blockie or Composite is a direct member of at most one
+    Composite. Standalone is a normal state.</li>
+    <li><strong>Acyclic.</strong> Containment cannot loop.</li>
+    <li><strong>Provenanced.</strong> Each edge records whether it came from an ad-hoc
+    <a class="term" href="../glossary.html#grouping">grouping</a> or from a pinned template.</li>
+    <li><strong>Non-destructive.</strong> Removing a member does not delete it. It keeps its
+    identity, state, placement, and Run.</li>
+    <li><strong>Never empty.</strong> Removing the last member dissolves the Composite in the same
+    transaction.</li>
+  </ul>
+
+  <h2>Two ways to get one</h2>
+  <table>
+    <thead><tr><th></th><th>Grouping</th><th>Template</th></tr></thead>
+    <tbody>
+      <tr><td>Members</td><td>existing entities</td><td>freshly created from a definition</td></tr>
+      <tr><td>Membership</td><td>mutable</td><td>immutable for the instance</td></tr>
+      <tr><td>Provenance</td><td><code>grouping</code></td><td><code>template</code> + local node id</td></tr>
+      <tr><td>To change it</td><td>add or remove members</td><td>fork it into a grouping</td></tr>
+    </tbody>
+  </table>
+  <p>Both are needed. Agents assemble existing things constantly (grouping), and reusable pieces
+  need to be pinned and reproducible (template). A grouping can be <em>saved as</em> a definition;
+  a template instance can be <em>forked</em> into a grouping, keeping every member identity.</p>
+
+  <h2>Aliases: the public face</h2>
+  <p>A Composite has no ports. It has a table of <strong>aliases</strong>, each pointing at
+  something that already exists: a member's port, or a fold.</p>
+
+  <div class="card">
+    <h3>Alias rules</h3>
+    <ul>
+      <li>A public <strong>value output</strong> has exactly one source. Never two.</li>
+      <li>A public <strong>value input</strong> may fan out through several alias entries, each with
+      one target.</li>
+      <li>A public <strong>event output</strong> may have several sources; events are channels.</li>
+      <li>Chains resolve outward-in through nesting and must terminate. Cycles are invalid.</li>
+      <li>External consumers see the Composite's alias, never a member id.</li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <span class="label">Why aliases instead of real ports</span>
+    <p>Because a second port system would need its own types, its own bindings, and its own state to
+    keep in sync with the members. An alias has no state, so there is nothing to sync and nothing
+    to disagree.</p>
+  </div>
+
+  <h2>Folds: declared aggregation</h2>
+  <p>A normal value input accepts one producer. That rule is what makes values predictable — and it
+  makes <code>SUM(A1:A10)</code> impossible, because summing is many-into-one.</p>
+  <p>A <a class="term" href="../glossary.html#fold">fold</a> is the declared exception: a Composite
+  may aggregate a named set of same-typed member outputs with one operation — <code>sum</code>,
+  <code>count</code>, <code>min</code>, <code>max</code>, <code>collect</code>. It runs in the
+  runtime, uses no process, and shares no state.</p>
+  <p>Aggregation becomes explicit rather than implicit. That is the difference between a fold and
+  a free-for-all.</p>
+
+  <h2>The manager</h2>
+  <p>A Composite may designate zero or one manager. The manager is <strong>one of its members</strong>
+  — not an outside brain attached to the group.</p>
+
+  <div class="card">
+    <h3>Requirements</h3>
+    <ul>
+      <li>It must be a <strong>direct member</strong>.</li>
+      <li>It must be <strong>occupied</strong> — its Run must be active.</li>
+      <li>Designation carries an <strong>epoch</strong> so a stale grant can be rejected.</li>
+    </ul>
+  </div>
+
+  <p>What does management actually grant? Exactly one thing:
+  <strong><code>composite.dispatch</code></strong> — the ability to send an addressed event to a
+  member, chosen from a declared member set.</p>
+
+  <p>Everything else already works without authority:</p>
+  <ul>
+    <li>publishing a Composite output — the manager's Run publishes to its own host port, and an
+    alias picks it up;</li>
+    <li>observing member outputs — through its own input ports, wired by connections;</li>
+    <li>changing appearance — publish a value; a Run never writes the document.</li>
+  </ul>
+
+  <div class="callout warn">
+    <span class="label">What a manager cannot do</span>
+    <p>Add, remove, move, or reparent members. Read member state or configuration. Reach into a
+    nested Composite. Cancel a member's Run. Write any part of the document, including
+    presentation.</p>
+  </div>
+
+  <h2>When the manager dies</h2>
+  <p>Five things must happen in <strong>one committed generation</strong>:</p>
+  <ol>
+    <li>the Run becomes terminal;</li>
+    <li>the host Blockie becomes vacant;</li>
+    <li>the designation is cleared;</li>
+    <li>the dispatch grant is revoked;</li>
+    <li>outputs that depended on it become unavailable.</li>
+  </ol>
+  <p>Split any one of those into a second transaction and you get a Composite claiming a manager
+  that no longer exists.</p>
+
+  <h2>Nesting</h2>
+  <p>A Composite can contain another Composite. The parent sees the child's <em>public aliases</em>
+  and nothing else. The child has its own manager, and the parent's manager gains no authority over
+  it. If the child's manager dies, the child becomes unmanaged; the parent is untouched.</p>
+
+  <div class="card">
+    <h3>Terms on this page</h3>
+    <ul class="small">
+      <li><strong>Alias</strong> — a public name pointing at a member port or a fold.</li>
+      <li><strong>Fold</strong> — a declared aggregation over a set of member outputs.</li>
+      <li><strong>Provenance</strong> — where a membership edge came from.</li>
+      <li><strong>Materialisation</strong> — turning a template into real instances and relationships.</li>
+      <li><strong>Member set</strong> — the declared destinations a manager may dispatch to.</li>
+      <li><strong>Epoch</strong> — a counter that invalidates stale designations.</li>
+    </ul>
+  </div>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Why does a Composite not have its own ports?</summary>
+      <p>Because ports imply state and ownership. Aliases point at ports that already exist, so
+      there is one source of truth and nothing to keep in sync.</p>
+    </details>
+    <details>
+      <summary>Your manager publishes a value. Did it need special authority?</summary>
+      <p>No. It published to its own host's <code>process</code> port, and an alias exposed it. Only
+      dispatch needs a grant.</p>
+    </details>
+    <details>
+      <summary>You remove a member that an alias points at. What must happen?</summary>
+      <p>The same transaction must repair the alias or reject the change. Leaving a dangling alias
+      would mean the Composite's public face refers to something that no longer exists.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="space.html">← Space and appearance</a>
+    <a href="processes.html">Next: processes →</a>
+  </div>
+</main>
+<script src="../assets/vendor/mermaid.min.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glossary · Blockies</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body data-root=".">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="index.html">Blockies</a> / Reference</p>
+  <h1>Glossary</h1>
+  <p class="lede">Every term the architecture uses, in one place. If a page uses a word you have not
+  seen, it should be here.</p>
+
+  <dl class="gloss">
+
+    <dt id="absence">absence</dt>
+    <dd>Not having a record at all, as opposed to having one whose value is null. An unplaced entity
+      is absent from the placement table. <span class="see">→ <a href="concepts/schema.html">The document</a></span></dd>
+
+    <dt id="alias">alias</dt>
+    <dd>A public name on a Composite that points at a member's port or at a fold. It has no state,
+      which is why a Composite needs no ports of its own. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="archetype">archetype</dt>
+    <dd>A Type's visual identity: a shape descriptor plus the renderer package that draws it.
+      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="assignability">assignability</dt>
+    <dd>Whether every value a source type can produce is accepted by a target type. Directional:
+      <code>integer</code> is assignable to <code>number</code>, not the reverse.
+      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="attention">attention</dt>
+    <dd>What is being watched. Derived from session scopes and from a Run's declared input bindings;
+      grants nothing and implies nothing. <span class="see">→ <a href="concepts/relationships.html">Relationships</a></span></dd>
+
+    <dt id="authority">authority</dt>
+    <dd>A grant permitting a verb on a scope. Checked once when an event or command enters the
+      World. <span class="see">→ <a href="concepts/relationships.html">Relationships</a></span></dd>
+
+    <dt id="blocked">blocked</dt>
+    <dd>The state of a computation that cannot run because a required input is unavailable. Never
+      silently replaced by a default or a stale value. <span class="see">→ <a href="concepts/runtime.html">Runtime</a></span></dd>
+
+    <dt id="causation">causation</dt>
+    <dd>The id of the event that directly caused a new event. Lets you reconstruct why something
+      happened. <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
+
+    <dt id="chrome">chrome</dt>
+    <dd>Decorative bounds, labels, and affordances around an assembly. Never interactive.
+      <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
+
+    <dt id="claim">claim</dt>
+    <dd>A Run's exclusive ownership of a host event input. Claimed deliveries go to the inbox;
+      unclaimed ones go to the reducer. <span class="see">→ <a href="concepts/processes.html#claims">Processes</a></span></dd>
+
+    <dt id="committed-generation">committed generation</dt>
+    <dd>One snapshot of state and outputs that a transaction has made the new truth. Renderers read
+      only committed generations. <span class="see">→ <a href="concepts/runtime.html">Runtime</a></span></dd>
+
+    <dt id="composite">Composite</dt>
+    <dd>An explicit assembly of Blockies and nested Composites. Not a Blockie, not a Type, no ports
+      of its own. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="compute">compute</dt>
+    <dd>A pure function that turns state, configuration, and inputs into output values. Cannot change
+      state or emit events. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="configuration">configuration</dt>
+    <dd>Typed, author-edited settings belonging to a Blockie. Distinct from Model State, which only
+      its reducer changes. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="coordinate-scope">coordinate scope</dt>
+    <dd>The thing a position is measured relative to: the Frame, or an owning Composite.
+      <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
+
+    <dt id="definition">definition</dt>
+    <dd>An immutable blueprint. Two kinds: a Type package (for Blockies) and a process definition
+      (for Runs). <span class="see">→ <a href="concepts/ontology.html">Entities</a></span></dd>
+
+    <dt id="derived">derived value</dt>
+    <dd>A value computed from stored records and never stored itself, such as occupancy, footprint,
+      or display status. <span class="see">→ <a href="concepts/ontology.html">Entities</a></span></dd>
+
+    <dt id="digest">digest</dt>
+    <dd>A content hash that pins an exact version of a definition, so behaviour cannot change
+      underneath a World. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="dispatch">dispatch</dt>
+    <dd>A manager's ability to send an addressed event to one member, chosen from a declared member
+      set. The only thing management grants. <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
+
+    <dt id="dissolve">dissolve</dt>
+    <dd>Removing a Composite while preserving its members. Placements are converted to the parent
+      scope and the interface is discarded. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="effect">effect</dt>
+    <dd>An authorised operation outside the deterministic World, such as a network call. Requested by
+      a reducer, executed only after commit, and answered by a later event.
+      <span class="see">→ <a href="concepts/runtime.html">Runtime</a></span></dd>
+
+    <dt id="entity">entity</dt>
+    <dd>A thing with identity that exists in its own right. Blockies, Composites, and Runs are the
+      runtime entities. <span class="see">→ <a href="concepts/ontology.html">Entities</a></span></dd>
+
+    <dt id="epoch">epoch</dt>
+    <dd>A counter on a manager designation that increments on every change, so a stale grant can be
+      rejected. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="fan-in">fan-in</dt>
+    <dd>Many producers into one input. Forbidden implicitly, because the combining rule would be
+      undeclared. A fold is the declared form. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="fan-out">fan-out</dt>
+    <dd>One output to many inputs. Always allowed. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="fold">fold</dt>
+    <dd>A declared aggregation over a set of member value outputs: sum, count, min, max, collect.
+      Uses no process and no shared state. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="footprint">footprint</dt>
+    <dd>The derived world-space bounds of an assembly. Not stored, and never a membership test.
+      <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
+
+    <dt id="frame">Frame</dt>
+    <dd>The single root coordinate scope of a World. <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
+
+    <dt id="grant">grant</dt>
+    <dd>A verb plus a scope, held by a role or by a Run. <span class="see">→ <a href="concepts/relationships.html">Relationships</a></span></dd>
+
+    <dt id="grouping">grouping</dt>
+    <dd>A Composite assembled ad hoc from existing entities. Mutable membership, preserved
+      identities. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="idempotent">idempotent</dt>
+    <dd>Safe to perform twice with the same effect. Inbox deliveries are at-least-once, so a step
+      must be idempotent or say otherwise. <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
+
+    <dt id="inbox">inbox</dt>
+    <dd>The ordered queue of deliveries a Run has been sent. Durable across restarts.
+      <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
+
+    <dt id="layer">layer</dt>
+    <dd>A number on a placement that orders members for drawing within one scope. Presentation only.
+      <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
+
+    <dt id="manager">manager</dt>
+    <dd>The one member of a Composite authorised to dispatch to other members. Must be a direct
+      member and occupied. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="materialisation">materialisation</dt>
+    <dd>Turning a template into real instances and relationships, with fresh identities.
+      <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="member">member</dt>
+    <dd>An entity directly contained by a Composite. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="membership">membership</dt>
+    <dd>The explicit fact that an entity is directly inside a Composite. Never inferred from
+      proximity or appearance. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="model-state">Model State</dt>
+    <dd>Persistent data owned by a Blockie, changed only by its own reducer.
+      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="occupancy">occupancy</dt>
+    <dd>Whether a Blockie currently hosts an unfinished Run. Derived from the registry, never stored.
+      <span class="see">→ <a href="concepts/ontology.html">Entities</a></span></dd>
+
+    <dt id="opaque-id">opaque identifier</dt>
+    <dd>A string the system never parses or derives, used only for stable identity.
+      <span class="see">→ <a href="concepts/ontology.html">Entities</a></span></dd>
+
+    <dt id="outbox">outbox</dt>
+    <dd>The committed queue of effect requests waiting to be executed after commit.
+      <span class="see">→ <a href="concepts/runtime.html">Runtime</a></span></dd>
+
+    <dt id="placement">placement</dt>
+    <dd>A position and scale relative to a coordinate scope. Optional, and semantically inert.
+      <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
+
+    <dt id="policy">policy</dt>
+    <dd>The roles and grants a World declares. Governs sessions, not the file holder.
+      <span class="see">→ <a href="concepts/relationships.html">Relationships</a></span></dd>
+
+    <dt id="port">port</dt>
+    <dd>A typed socket on a Blockie: a direction and a kind (value or event).
+      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="principal">principal</dt>
+    <dd>The acting identity a host issues to a session. Never a World entity.
+      <span class="see">→ <a href="concepts/relationships.html">Relationships</a></span></dd>
+
+    <dt id="producer">producer</dt>
+    <dd>The one thing allowed to write a value output: the Type's compute, or an attached Run.
+      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="provenance">provenance</dt>
+    <dd>Where a membership edge came from: an ad-hoc grouping or a specific template node.
+      <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="pure">pure</dt>
+    <dd>Same inputs, same outputs, no side effects. No clock, no randomness, no network.
+      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="reducer">reducer</dt>
+    <dd>A pure function that takes state, configuration, and one event, and returns the complete next
+      state plus any actions. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="renderer-package">renderer package</dt>
+    <dd>A drawing-only plugin. Not a Type: it has no ports, state, or logic.
+      <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
+
+    <dt id="repair">repair</dt>
+    <dd>An unambiguous fix applied at load instead of rejecting the document. Exactly one case: a
+      dangling manager designation. <span class="see">→ <a href="concepts/schema.html">The document</a></span></dd>
+
+    <dt id="run">Run</dt>
+    <dd>A managed, resumable activity with its own identity, state, inbox, and status. Hosted by
+      exactly one Blockie. <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
+
+    <dt id="run-state">run state</dt>
+    <dd>The state owned by a Run. Separate from the host Blockie's Model State, so there is only ever
+      one writer. <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
+
+    <dt id="staging">staging</dt>
+    <dd>Working on a private copy of the World during a transaction, invisible to readers until
+      commit. <span class="see">→ <a href="concepts/runtime.html">Runtime</a></span></dd>
+
+    <dt id="step">step</dt>
+    <dd>One bounded execution of a Run: receives a snapshot, returns a result, never spans a commit.
+      <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
+
+    <dt id="template">template</dt>
+    <dd>A pinned definition's internal structure, instantiated into fresh members with immutable
+      topology. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="transaction">transaction</dt>
+    <dd>A bounded unit of work that commits completely or changes nothing.
+      <span class="see">→ <a href="concepts/runtime.html">Runtime</a></span></dd>
+
+    <dt id="transform">transform</dt>
+    <dd>Translation plus uniform scale. No rotation, because rotation with non-uniform scale cannot
+      compose losslessly. <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
+
+    <dt id="type-package">Type package</dt>
+    <dd>The immutable blueprint for a Blockie: archetype, state and config schemas, ports, optional
+      logic. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="unplaced">unplaced</dt>
+    <dd>Having no placement record: exists, is not drawn, contributes no footprint.
+      <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
+
+    <dt id="value-event">value vs event</dt>
+    <dd>A value is the latest information; an event is a discrete occurrence. An event cannot be
+      modelled as a value that stays true. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+
+    <dt id="wait-condition">wait condition</dt>
+    <dd>What must happen before a Run continues: an inbox item, a value change, a timer, a human
+      answer, or an external service. <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
+
+  </dl>
+
+  <div class="next">
+    <a href="decisions.html">← Decision log</a>
+    <a href="index.html">Back to the overview →</a>
+  </div>
+</main>
+<script src="assets/vendor/mermaid.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

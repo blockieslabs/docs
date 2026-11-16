@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relationships and authority · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
+  <h1>Relationships and authority</h1>
+  <p class="lede">If you remember one page of this guide, make it this one. Almost every design
+  argument in Blockies is about keeping two relationships from being confused for each other.</p>
+
+  <h2>The same Blockie, eight different facts</h2>
+  <p>Two entities can be related in several ways at once, and each way answers a different
+  question. None of them implies another.</p>
+
+  <div class="mermaid">
+flowchart TB
+  B["Blockie X"]
+  C1["Composite A"]
+  C2["Composite B"]
+  S["actor session"]
+  R["Run"]
+  P["parent Run"]
+  C1 -- "membership" --> B
+  S -- "attention (derived)" --> B
+  S -- "authority (grant)" --> B
+  R -- "hosting" --> B
+  P -- "parentage" --> R
+  C2 -. "proximity, means nothing" .- B
+  </div>
+
+  <table>
+    <thead><tr><th>Relationship</th><th>Answers</th><th>Never implies</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Placement</strong></td><td>Where is it?</td><td>membership, control</td></tr>
+      <tr><td><strong>Membership</strong></td><td>What is it part of?</td><td>ownership of its activity</td></tr>
+      <tr><td><strong>Nesting</strong></td><td>Which assembly contains which?</td><td>that child members are parent members</td></tr>
+      <tr><td><strong>Management</strong></td><td>Who coordinates this assembly?</td><td>access to member internals</td></tr>
+      <tr><td><strong>Hosting</strong></td><td>Which Blockie represents this activity?</td><td>membership</td></tr>
+      <tr><td><strong>Parentage</strong></td><td>Which activity spawned which?</td><td>grouping or authority</td></tr>
+      <tr><td><strong>Communication</strong></td><td>What talks to what?</td><td>permission</td></tr>
+      <tr><td><strong>Attention</strong></td><td>What is being watched?</td><td>access or control</td></tr>
+      <tr><td><strong>Lifecycle authority</strong></td><td>Who may stop this activity?</td><td>management</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Concrete confusions this prevents</h2>
+  <div class="card">
+    <h3>"It's next to the group, so it's part of it"</h3>
+    <p>No. Membership is an explicit edge. Proximity is placement, and placement is semantically
+    inert.</p>
+  </div>
+  <div class="card">
+    <h3>"It spawned the worker, so the worker is in its group"</h3>
+    <p>No. Parentage is a fact about activity. Membership is a fact about assembly. The child's host
+    Blockie can be placed anywhere, or nowhere.</p>
+  </div>
+  <div class="card">
+    <h3>"It's the manager, so it can read the members' state"</h3>
+    <p>No. Management grants dispatch and nothing else. The manager sees what its own ports are
+    wired to.</p>
+  </div>
+  <div class="card">
+    <h3>"It's watching, so it can act"</h3>
+    <p>No. Attention is derived from what a session frames and what a Run's inputs are wired to. It
+    grants nothing.</p>
+  </div>
+
+  <h2>Attention is derived</h2>
+  <p>Attention answers "what is being watched", and it is not an entity. It is a projection over two
+  sources:</p>
+  <ul>
+    <li>an <strong>external actor</strong> attends to whatever its session frames and is granted;</li>
+    <li>an <strong>in-world Run</strong> attends to the entities whose outputs its host's inputs are
+    connected to.</li>
+  </ul>
+  <p>Because it is derived, there is no second truth about who is working on what. And because it
+  grants nothing, moving a Blockie next to a Composite changes exactly one thing: the picture.</p>
+
+  <h2>Authority</h2>
+  <p>Authority answers "who may act". It is split in two, and the split matters:</p>
+  <table>
+    <thead><tr><th>Half</th><th>Lives in</th><th>Why there</th></tr></thead>
+    <tbody>
+      <tr><td>Roles and grants</td><td>the World document</td><td>a World must carry its own rules to be portable</td></tr>
+      <tr><td>Principals and bindings</td><td>the host session</td><td>identities are deployment-specific</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Four verbs</h3>
+  <table>
+    <thead><tr><th>Verb</th><th>Allows</th></tr></thead>
+    <tbody>
+      <tr><td><code>deliver</code></td><td>submit an event to an endpoint</td></tr>
+      <tr><td><code>read</code></td><td>read values and subscribe to generations</td></tr>
+      <tr><td><code>mutate</code></td><td>document operations: create, move, group, connect, present</td></tr>
+      <tr><td><code>run</code></td><td>attach, cancel, suspend, resume</td></tr>
+    </tbody>
+  </table>
+  <p>Scopes are <code>world</code>, <code>entities</code>, or <code>endpoints</code>. A grant on a
+  Composite covers its public aliases only — never a member port, never member state. Nothing is
+  granted by default.</p>
+
+  <h3>Checked once, at the boundary</h3>
+  <p>Authority is checked when an event or command <em>enters</em> the World. Internal routing —
+  alias resolution, forwarding, dispatch — is authorised by structure, not re-checked against the
+  actor.</p>
+  <div class="callout">
+    <span class="label">Why</span>
+    <p>If every hop re-checked, a manager could never dispatch to a worker: the original voter would
+    need permission on the worker's input. And authority that depends on route shape cannot be
+    audited.</p>
+  </div>
+
+  <h3>The file holder</h3>
+  <p>Whoever opens a World owns it: the owner has implicit <code>mutate</code> and
+  <code>run</code>. Policy governs sessions, not the person holding the file. A file holder can
+  edit the document, including its policy — pretending otherwise would be theatre.</p>
+
+  <h2>Lifecycle authority is its own thing</h2>
+  <p>Being able to stop a Run is not management, and not membership. A parent Run may ask its
+  descendants to cancel; a host may cancel its own Run; World policy may allow an operator to
+  suspend anything. None of those make anyone a manager.</p>
+
+  <div class="card">
+    <h3>Terms on this page</h3>
+    <ul class="small">
+      <li><strong>Attention</strong> — a derived projection of what is being watched.</li>
+      <li><strong>Authority</strong> — a grant that permits an action on a scope.</li>
+      <li><strong>Grant</strong> — verb plus scope, held by a role or a Run.</li>
+      <li><strong>Principal</strong> — the acting identity a host issues to a session.</li>
+      <li><strong>Lifecycle authority</strong> — the separate right to stop an activity.</li>
+    </ul>
+  </div>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>An agent moves its Blockie into a Composite. Did it gain authority?</summary>
+      <p>No. Membership is not authority. Its grants are unchanged, and it still cannot read member
+      state.</p>
+    </details>
+    <details>
+      <summary>Who can cancel a worker Run inside a Composite?</summary>
+      <p>Whoever holds <code>run</code> on it, its parent Run, or its host's owner. Not necessarily
+      the Composite's manager.</p>
+    </details>
+    <details>
+      <summary>Why does a manager's dispatch not re-check the original voter's permission?</summary>
+      <p>Because the manager's right to dispatch was authorised once, at designation. Re-checking
+      per hop would make delegation impossible and audit meaningless.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="runtime.html">← The runtime</a>
+    <a href="schema.html">Next: the document →</a>
+  </div>
+</main>
+<script src="../assets/vendor/mermaid.min.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

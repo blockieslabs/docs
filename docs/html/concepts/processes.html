@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Processes · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
+  <h1 id="run">Processes</h1>
+  <p class="lede">A Run is a long-lived activity: something that can wait, be observed, be
+  cancelled, and survive a restart. It lives inside a Blockie, which represents it in the World.</p>
+
+  <h2>Why a Run is not a function call</h2>
+  <p>Most work in a World is a reducer or a pure computation — a function that finishes before the
+  transaction commits. That is cheap and invisible, and it should stay that way.</p>
+  <p>A Run is for the other kind of work: an agent thinking, a worker waiting on an API, a
+  simulation ticking, anything that must <em>outlive one transaction</em>. Those need identity,
+  state, a status you can look at, and a way to stop them.</p>
+
+  <div class="callout">
+    <span class="label">The rule of thumb</span>
+    <p>Use a Run when the activity must outlive a transaction, wait on something uncertain, be
+    visible as a thing in the World, or be cancellable. Otherwise use a reducer or compute.</p>
+  </div>
+
+  <h2>A Run's own state</h2>
+  <p>A Run owns its state. It never writes its host Blockie's Model State.</p>
+  <p>That separation is deliberate. If a Run could write the host's state, the Blockie would have
+  two writers — its reducer and the Run — and "what is the value" would depend on which happened
+  last. Instead, the Run publishes outward through declared ports, like everyone else.</p>
+
+  <h2>The host contract</h2>
+  <p>A process definition declares three sets, and every one is validated against the host Type at
+  attach time:</p>
+  <table>
+    <thead><tr><th>Set</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>claims</code></td><td>event inputs the Run takes ownership of</td></tr>
+      <tr><td><code>reads</code></td><td>value inputs the Run may read</td></tr>
+      <tr><td><code>publishes</code></td><td>value outputs the Run produces</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="claims">Claims: who handles the event</h3>
+  <p>Every event input is either <strong>reducer-owned</strong> or <strong>run-owned</strong>.
+  Never both.</p>
+  <ul>
+    <li>Claimed → the delivery goes to the Run's <a class="term" href="../glossary.html#inbox">inbox</a>.</li>
+    <li>Unclaimed → the Blockie's reducer handles it.</li>
+  </ul>
+  <p>This is what stops double handling. Without it, an event could both update the Blockie and
+  wake its Run, and the two could disagree.</p>
+
+  <h2>Steps</h2>
+  <p>The runtime never "runs a program". It runs a <strong>bounded step</strong> and asks the
+  definition for a result.</p>
+  <div class="card">
+    <h3>A step receives</h3>
+    <ul>
+      <li>its own state;</li>
+      <li>the host's configuration, read-only;</li>
+      <li>the resolved values of its <code>reads</code> ports;</li>
+      <li>its inbox items;</li>
+      <li>its dispatch grant, if it has one.</li>
+    </ul>
+    <p class="small">It does not receive host Model State, other entities, or the ambient
+    environment.</p>
+  </div>
+
+  <div class="card">
+    <h3>A step returns</h3>
+    <table>
+      <thead><tr><th>Result contains</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>outcome</code></td><td>terminal: succeeded, failed, or cancelled</td></tr>
+        <tr><td><code>wait</code></td><td>the Run is waiting, with a reason</td></tr>
+        <tr><td>neither</td><td>continue — step me again in a later transaction</td></tr>
+      </tbody>
+    </table>
+    <p class="small">That third case is how loops are expressed. There is no <code>continue</code>
+    flag; a loop is just a Run that keeps saying "not finished, not waiting".</p>
+  </div>
+
+  <h2>The lifecycle</h2>
+  <div class="mermaid">
+stateDiagram-v2
+  [*] --> queued
+  queued --> running: scheduled
+  running --> waiting: step returns wait
+  waiting --> queued: condition satisfied
+  running --> succeeded: outcome
+  running --> failed: throws or over budget
+  running --> cancelling: cancel requested
+  waiting --> cancelling: cancel requested
+  cancelling --> cancelled: acknowledged
+  succeeded --> [*]
+  failed --> [*]
+  cancelled --> [*]
+  </div>
+
+  <p>Waiting and suspended are different. <strong>Waiting</strong> means the Run has an unsatisfied
+  condition and will continue. <strong>Suspended</strong> means something is deliberately holding
+  it back.</p>
+
+  <h2>Phases: where a step happens</h2>
+  <div class="mermaid">
+flowchart LR
+  A["accept<br/>validate"] --> B["event phase<br/>reducers, FIFO"]
+  B --> C["process phase<br/>ready runs, FIFO<br/>one step per run"]
+  C --> D["value phase<br/>pure recomputation"]
+  D --> E["commit<br/>one generation"]
+  </div>
+
+  <p>Two rules make this predictable:</p>
+  <ul>
+    <li><strong>One step per Run per transaction.</strong> A Run cannot loop inside a commit.</li>
+    <li><strong>Runs never observe a value change in the transaction that produced it.</strong>
+    Values stabilise after the process phase, so a Run always reads one coherent generation.</li>
+  </ul>
+  <p>That second rule is glitch-freedom by construction, not a limitation to work around.</p>
+
+  <h2>Waiting, and what wakes a Run</h2>
+  <table>
+    <thead><tr><th>Reason</th><th>Wakes when</th></tr></thead>
+    <tbody>
+      <tr><td><code>inbox</code></td><td>something is delivered to it</td></tr>
+      <tr><td><code>dependency</code></td><td>a value it reads changes (next transaction)</td></tr>
+      <tr><td><code>timer</code></td><td>time elapses</td></tr>
+      <tr><td><code>human_permission</code>, <code>human_question</code>, <code>human_auth</code></td><td>a person answers</td></tr>
+      <tr><td><code>external_service</code></td><td>an effect completes</td></tr>
+    </tbody>
+  </table>
+  <p>The reason is not decoration: it is the difference between "nobody needs to do anything" and
+  "this is blocked on a human". That distinction is what a status badge shows.</p>
+
+  <h2>Dispatch</h2>
+  <p>A Run holding the <code>composite.dispatch</code> grant may send an addressed event to a
+  member. The destination must be in its declared member set, so the possible routes are known in
+  advance even though the choice is made at run time.</p>
+  <p>The new event gets a new id and records <a class="term" href="../glossary.html#causation">causation</a>
+  pointing at the event that triggered it. That chain is how you reconstruct "why did this happen"
+  later.</p>
+
+  <h2>Failures</h2>
+  <table>
+    <thead><tr><th>What happened</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>The step throws, traps, or runs out of budget</td><td>the Run fails; the transaction still commits</td></tr>
+      <tr><td>The step returns an invalid value or an undeclared target</td><td>the whole transaction aborts</td></tr>
+      <tr><td>The inbox delivery itself is invalid</td><td>the transaction aborts</td></tr>
+    </tbody>
+  </table>
+  <p>Executing badly is a legitimate outcome. Lying about your contract is a bug.</p>
+
+  <h2>Cancellation</h2>
+  <p>Cancellation is a <em>request</em>, not a kill. The Run moves to <code>cancelling</code>, the
+  step acknowledges, and only after a grace period is it forced. When a Run ends, its descendants
+  are asked to cancel too — each one goes through the same path, so the history stays honest.</p>
+
+  <div class="card">
+    <h3>Terms on this page</h3>
+    <ul class="small">
+      <li><strong>Run</strong> — a managed, resumable activity with its own state.</li>
+      <li><strong>Step</strong> — one bounded execution of a Run.</li>
+      <li><strong>Inbox</strong> — the ordered queue of deliveries a Run has been sent.</li>
+      <li><strong>Claim</strong> — a Run's exclusive ownership of an event input.</li>
+      <li><strong>Wait condition</strong> — what must happen before a Run continues.</li>
+      <li><strong>Causation</strong> — the id of the event that caused this one.</li>
+      <li><strong>Grant</strong> — a bounded capability held by a Run.</li>
+      <li><strong>Idempotent</strong> — safe to run twice with the same effect.</li>
+    </ul>
+  </div>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>A button needs to respond to clicks. Does it need a Run?</summary>
+      <p>Not necessarily. A reducer can emit an event on click. A Run is only needed if the response
+      must outlive the transaction, wait, or be visible and cancellable.</p>
+    </details>
+    <details>
+      <summary>Why can't a Run read the host's Model State?</summary>
+      <p>Because that state changes under the reducer. A reader with no dependency edge would see
+      values that do not belong to one coherent generation. The Run gets declared input values
+      instead, which stabilise before it steps.</p>
+    </details>
+    <details>
+      <summary>A step returns neither an outcome nor a wait. What happens?</summary>
+      <p>The Run goes back to queued and is stepped again in a later transaction. That is how a loop
+      is expressed, bounded by one step per transaction.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="composites.html">← Composites</a>
+    <a href="runtime.html">Next: the runtime →</a>
+  </div>
+</main>
+<script src="../assets/vendor/mermaid.min.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

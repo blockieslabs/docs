@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The runtime · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
+  <h1>The runtime</h1>
+  <p class="lede">Everything that changes happens inside a transaction. A transaction either commits
+  completely or changes nothing.</p>
+
+  <h2>The pipeline</h2>
+  <div class="mermaid">
+flowchart TB
+  A["accept<br/>who is acting, on what"] --> B["validate<br/>payload, authority, revision"]
+  B --> C["stage<br/>a private working copy"]
+  C --> D["event phase<br/>reducers, FIFO"]
+  D --> E["process phase<br/>run steps, FIFO"]
+  E --> F["value phase<br/>recompute what is dirty"]
+  F --> G["prepare<br/>validate the whole result"]
+  G --> H["commit<br/>one generation"]
+  H --> I["publish<br/>renderers see it now"]
+  I --> J["effects<br/>outside the world, after commit"]
+  </div>
+
+  <h2>Staged versus committed</h2>
+  <p><a class="term" href="../glossary.html#staging">Staging</a> means the transaction works on a
+  private copy. Reducers and steps see the latest staged values; nobody outside sees anything until
+  the commit.</p>
+  <p>A <strong>generation</strong> is one committed snapshot. Renderers read generations, never
+  half-finished work, so a screen can never show a vote count from before the chart was
+  recalculated.</p>
+
+  <div class="callout">
+    <span class="label">Why one transaction</span>
+    <p>If a vote updated the count in one step and the chart in another, a viewer could see the two
+    disagree for a frame. One commit, one picture.</p>
+  </div>
+
+  <h2>Determinism</h2>
+  <p>Two machines given the same World and the same inputs must produce the same result. That
+  requires:</p>
+  <ul>
+    <li><strong>FIFO delivery</strong> — events are processed in arrival order, not by thread
+    scheduling.</li>
+    <li><strong>Stable tie-breaks</strong> — when several things are ready, order by id.</li>
+    <li><strong>No ambient time or randomness</strong> — those enter as inputs or effect results.</li>
+    <li><strong>Pure functions</strong> — same inputs, same outputs.</li>
+  </ul>
+
+  <h2>What can go wrong, and where it stops</h2>
+  <table>
+    <thead><tr><th>Failure</th><th>Scope</th><th>Outcome</th></tr></thead>
+    <tbody>
+      <tr><td>Bad event payload or unauthorised actor</td><td>before staging</td><td>rejected, nothing changes</td></tr>
+      <tr><td>Reducer throws or returns invalid state</td><td>transaction</td><td>aborted, nothing commits</td></tr>
+      <tr><td>Compute throws or returns an invalid value</td><td>one node</td><td>that output becomes <code>error</code>, transaction commits</td></tr>
+      <tr><td>Step throws or exceeds budget</td><td>one run</td><td>the run fails, transaction commits</td></tr>
+      <tr><td>Step returns an invalid result</td><td>transaction</td><td>aborted</td></tr>
+    </tbody>
+  </table>
+  <p>The pattern: <strong>execution failure is local, contract violation is fatal.</strong> A
+  computation that cannot finish is a fact about the World; a computation that returns nonsense is
+  a bug in the definition.</p>
+
+  <h2>Blocked is not stale</h2>
+  <p>When an upstream output is in error or unavailable, downstream consumers become
+  <strong>blocked</strong>. They never fall back to the last good value, because that value no
+  longer describes anything real.</p>
+  <p>This is the same rule at every layer: no defaults, no stale reads, no silent zero.</p>
+
+  <h2>Effects</h2>
+  <p>Some work leaves the World: an HTTP call, an AI request, a notification. Those are
+  <a class="term" href="../glossary.html#effect">effects</a>. A reducer may <em>request</em> one; it
+  never performs it.</p>
+  <ul>
+    <li>The request is validated and committed to an outbox <em>with</em> the transaction.</li>
+    <li>Only after the commit does the host execute it.</li>
+    <li>The result comes back as a new event in a later transaction.</li>
+  </ul>
+  <p>If the transaction aborts, the effect never runs. That is the whole point.</p>
+
+  <div class="card">
+    <h3>Terms on this page</h3>
+    <ul class="small">
+      <li><strong>Transaction</strong> — a bounded unit of work that commits or aborts as a whole.</li>
+      <li><strong>Generation</strong> — one committed snapshot of state and outputs.</li>
+      <li><strong>Staging</strong> — working on a private copy before committing.</li>
+      <li><strong>Commit</strong> — making the staged result the new truth, atomically.</li>
+      <li><strong>Blocked</strong> — cannot compute because an upstream value is unavailable.</li>
+      <li><strong>Effect</strong> — an authorised operation outside the deterministic World.</li>
+      <li><strong>Outbox</strong> — the committed queue of effects waiting to be executed.</li>
+    </ul>
+  </div>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Why do reducers run before computations?</summary>
+      <p>Because computations must see the final state of the transaction. If a computation ran
+      between two reducer deliveries, it would calculate from a state that is about to change.</p>
+    </details>
+    <details>
+      <summary>A compute throws. Does the user's click get lost?</summary>
+      <p>No. The state transition commits; the affected output is marked as an error. The click
+      happened, the derived value is unavailable.</p>
+    </details>
+    <details>
+      <summary>Can an effect run before commit?</summary>
+      <p>Never. If it could, an aborted transaction could still have sent an email.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="processes.html">← Processes</a>
+    <a href="relationships.html">Next: relationships and authority →</a>
+  </div>
+</main>
+<script src="../assets/vendor/mermaid.min.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>
