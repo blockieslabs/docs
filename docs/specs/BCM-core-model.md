@@ -211,14 +211,36 @@ Composite becomes unmanaged.
 **C-51.** State or configuration that fails its declared type MUST reject. It is never coerced,
 defaulted, or partially applied.
 
-## 12. Conformance
+## 12. Authority
+
+**C-52.** A World MAY declare a policy of roles and grants. A World with no policy is operable
+only by the host's owner principal.
+
+**C-53.** Principals are never World entities. A host issues a principal per session and binds it
+to roles. Bindings are session state and MUST NOT appear in the document.
+
+**C-54.** Verbs are `deliver`, `read`, `mutate`, and `run`. Nothing is granted by default; a role
+with no matching grant is denied.
+
+**C-55.** Scopes are `world`, `entities`, and `endpoints`. A grant on a Composite covers its
+public aliases only; it never reaches a member port, member state, or a nested Composite's
+internals.
+
+**C-56.** Authority is checked once, when an external event or command enters the World. Alias
+resolution, forwarding, dispatch, and child notification are authorised by structure and MUST NOT
+be re-checked against the acting principal.
+
+**C-57.** The owner principal has implicit `mutate` and `run` on any World it loads. Policy governs
+sessions, not the file holder. A renderer is never an enforcement point.
+
+## 13. Conformance
 
 An implementation claiming BCM conformance MUST: parse and validate the canonical document;
 preserve identity across every structural change; derive occupancy, status, availability, and
 footprint rather than storing them; enforce C-37 through C-47; and pass the `schema` and
 `validator` vectors in `schema/0002-conformance-fixtures.md`.
 
-## 13. Not owned here
+## 14. Not owned here
 
 Run execution and scheduling (BPS). Composite operations and interface semantics (BCS). Type
 expressions, assignability, and equality (BTS + D-020). Document encoding for digesting — still

@@ -46,6 +46,10 @@ deleted: the trail is the point.
 | D-039 | The step result is a three-way outcome | active |
 | D-040 | The step context includes host configuration, never host state | active |
 | D-041 | Repair is limited to dangling designation | active |
+| D-042 | Policy is a template in the World; bindings are session state | active |
+| D-043 | Four verbs, three scopes, deny by default | active |
+| D-044 | Authority is checked once, at the boundary | active |
+| D-045 | The file holder is not governed by policy | active |
 
 ## Lineage
 
@@ -470,4 +474,23 @@ flowchart TB
     M2 --> M3
     P["presentation record<br/>label · renderer? · body?"] -. "describes, never computes" .-> CH
     X["styling, typography"] -. "renderer package" .-> CH
+```
+
+## D-042 / D-044 — Where authority lives, and when it is checked
+
+```mermaid
+flowchart LR
+    subgraph W["World document (portable)"]
+        P["policy: roles + grants<br/>deliver · read · mutate · run"]
+    end
+    subgraph H["Host session (deployment)"]
+        PR["principal"]
+        B["role bindings"]
+        C["camera + grant scope"]
+    end
+    E["external event"] --> CHK{"authorised at entry?"}
+    P --> CHK
+    B --> CHK
+    CHK -- "no" --> X["rejected, nothing staged"]
+    CHK -- "yes" --> I["internal routing<br/>alias · forward · dispatch<br/>not re-checked"]
 ```

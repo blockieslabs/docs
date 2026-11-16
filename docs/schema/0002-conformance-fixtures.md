@@ -52,6 +52,9 @@ concept has been reintroduced.
 | VAL-016 | A dispatch target outside `grant.memberSet` | Reject |
 | VAL-017 | `presentation.body` naming something that is not a direct member | Reject |
 | VAL-018 | `presentation.renderer` resolving to a Type package instead of a renderer package | Reject |
+| VAL-019 | A grant whose scope names a member port from outside its Composite | Reject |
+| VAL-020 | Two roles with the same id | Reject |
+| VAL-021 | A grant scope combining two forms, such as `world` and `entities` | Reject (schema) |
 
 ## Runtime vectors
 
@@ -91,6 +94,18 @@ then    R1.status        = failed
 
 The single-generation assertion is the test for IR-004. A harness that observes an intermediate
 state where `C.manager` exists but `R1` is terminal has failed.
+
+### RT-A-3 — unauthorised delivery
+
+```
+given   world_trace_a with policy: role audience may deliver only on C.press
+when    event press → C.press from a principal bound to no role
+then    rejected before staging
+        generation unchanged
+        no reducer invocation and no step in the trace
+```
+
+Authority is checked once, at entry (D-044). A rejected delivery must leave no partial trace.
 
 ### RT-B-1 — delegate
 
