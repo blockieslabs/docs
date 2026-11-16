@@ -87,7 +87,7 @@
   </div>
 
   <h2>The lifecycle</h2>
-  <div class="mermaid">
+  <div class="mermaid"><script type="text/plain">
 stateDiagram-v2
   [*] --> queued
   queued --> running: scheduled
@@ -101,20 +101,20 @@ stateDiagram-v2
   succeeded --> [*]
   failed --> [*]
   cancelled --> [*]
-  </div>
+  </script></div>
 
   <p>Waiting and suspended are different. <strong>Waiting</strong> means the Run has an unsatisfied
   condition and will continue. <strong>Suspended</strong> means something is deliberately holding
   it back.</p>
 
   <h2>Phases: where a step happens</h2>
-  <div class="mermaid">
+  <div class="mermaid"><script type="text/plain">
 flowchart LR
   A["accept<br/>validate"] --> B["event phase<br/>reducers, FIFO"]
   B --> C["process phase<br/>ready runs, FIFO<br/>one step per run"]
   C --> D["value phase<br/>pure recomputation"]
   D --> E["commit<br/>one generation"]
-  </div>
+  </script></div>
 
   <p>Two rules make this predictable:</p>
   <ul>

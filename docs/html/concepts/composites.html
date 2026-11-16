@@ -20,7 +20,7 @@
   <strong>alias table</strong> describing its public face, optional <strong>folds</strong>, an
   optional <strong>manager</strong> designation, and an optional presentation record.</p>
 
-  <div class="mermaid">
+  <div class="mermaid"><script type="text/plain">
 flowchart TB
   subgraph C["Composite: Button"]
     M1["pixelA<br/>drawing member"]
@@ -32,7 +32,7 @@ flowchart TB
   A2 --> L["lamp<br/>outside the Composite"]
   R["Run R1"] -. "hosted by" .-> M2
   G["manager designation<br/>R1 holds dispatch"] -.-> C
-  </div>
+  </script></div>
 
   <p>Three drawing Blockies would look the same. The difference is that the middle one hosts a Run,
   and the assembly exposes two endpoints. That is the entire "button".</p>

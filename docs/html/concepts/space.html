@@ -23,14 +23,14 @@
   nearest placed ancestor: its Composite if it has one, otherwise the Frame. Moving a Composite
   moves everything inside it without touching a single member coordinate.</p>
 
-  <div class="mermaid">
+  <div class="mermaid"><script type="text/plain">
 flowchart TB
   F["Frame<br/>root scope"] --> C["Composite C<br/>has its own transform"]
   C --> B1["member<br/>local coordinates"]
   C --> B2["member<br/>local coordinates"]
   F --> B3["standalone Blockie<br/>frame coordinates"]
   B2 -. "no placement record" .-> X["unplaced: exists,<br/>not drawn, still countable"]
-  </div>
+  </script></div>
 
   <h2>The transform</h2>
   <p>A placement is a translation plus a <strong>uniform</strong> scale. No rotation, and no

@@ -104,10 +104,24 @@ function buildNav(root, here) {
   });
 }
 
+// Diagram source is stored as raw text inside a <script type="text/plain"> so that
+// constructs like <br/> survive HTML parsing. Reading textContent directly from the
+// div would drop those elements and silently glue words together.
+function diagramSource(el) {
+  const holder = el.querySelector('script[type="text/plain"]');
+  if (holder) return holder.textContent.trim();
+  // Fallback for markup written the old way: rebuild <br> as literal <br/> text.
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll("br").forEach((br) => {
+    br.replaceWith(document.createTextNode("<br/>"));
+  });
+  return clone.textContent.trim();
+}
+
 function renderDiagrams() {
   if (!window.pele) return;
   document.querySelectorAll(".mermaid").forEach((el) => {
-    const source = el.textContent.trim();
+    const source = diagramSource(el);
     if (!source) return;
     try {
       pele.mount(el, source);

@@ -95,14 +95,14 @@
   <strong>run registry</strong> holds an activity for it that has not finished. Otherwise it is
   vacant. There is no field to get out of sync, because there is no field.</p>
 
-  <div class="mermaid">
+  <div class="mermaid"><script type="text/plain">
 flowchart LR
   R["run registry<br/>authoritative"] --> Q{"active run<br/>for this host?"}
   Q -- yes --> O["occupied"]
   Q -- no --> V["vacant"]
   O --> D["display status<br/>working · blocked · idle · paused"]
   V --> D2["display status<br/>done · cancelled · error · nothing"]
-  </div>
+  </script></div>
 
   <p>The <a href="processes.html">processes page</a> explains why "computing" was the wrong word:
   a run that is queued or paused is not computing anything, yet it is still attached.</p>

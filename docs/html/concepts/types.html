@@ -21,7 +21,7 @@
   version, and changing the Type means publishing a new version. Nothing silently updates
   underneath a running World.</p>
 
-  <div class="mermaid">
+  <div class="mermaid"><script type="text/plain">
 flowchart TB
   T["Type package<br/>immutable, digest-pinned"] --> A["archetype<br/>shape + renderer package"]
   T --> S["state schema + initial value"]
@@ -32,7 +32,7 @@ flowchart TB
   P --> E["event ports<br/>in and out"]
   V --> PR["value output may declare<br/>producer: compute or process"]
   E --> CL["event input may declare<br/>claimable: true"]
-  </div>
+  </script></div>
 
   <h2>Three kinds of data</h2>
   <p>This is the most common source of confusion, so it gets a table.</p>

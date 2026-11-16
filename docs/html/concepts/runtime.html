@@ -16,7 +16,7 @@
   completely or changes nothing.</p>
 
   <h2>The pipeline</h2>
-  <div class="mermaid">
+  <div class="mermaid"><script type="text/plain">
 flowchart TB
   A["accept<br/>who is acting, on what"] --> B["validate<br/>payload, authority, revision"]
   B --> C["stage<br/>a private working copy"]
@@ -27,7 +27,7 @@ flowchart TB
   G --> H["commit<br/>one generation"]
   H --> I["publish<br/>renderers see it now"]
   I --> J["effects<br/>outside the world, after commit"]
-  </div>
+  </script></div>
 
   <h2>Staged versus committed</h2>
   <p><a class="term" href="../glossary.html#staging">Staging</a> means the transaction works on a
