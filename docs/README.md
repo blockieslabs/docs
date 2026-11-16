@@ -11,21 +11,28 @@ document says so in its header.
    layer may and may not do.
 3. [`architecture/fsm-inventory.md`](architecture/fsm-inventory.md) — every state machine in
    the system, its owner, and the level it latches onto.
-4. [`traces/0001-reference-traces.md`](traces/0001-reference-traces.md) — four scenarios as
+4. [`specs/BCM-core-model.md`](specs/BCM-core-model.md),
+   [`specs/BPS-process.md`](specs/BPS-process.md),
+   [`specs/BCS-composite.md`](specs/BCS-composite.md) — the normative model, requirements
+   numbered `C-n`, `P-n`, `S-n` so they can be cited.
+5. [`traces/0001-reference-traces.md`](traces/0001-reference-traces.md) — four scenarios as
    transaction logs. These are the golden vectors.
-5. [`schema/0001-minimal-model.md`](schema/0001-minimal-model.md) — the derived model, with a
+6. [`schema/0001-minimal-model.md`](schema/0001-minimal-model.md) — the derived model, with a
    traceability table and a list of what was deliberately cut.
-6. [`schema/blockies-0.schema.json`](schema/blockies-0.schema.json) and
+7. [`schema/blockies-0.schema.json`](schema/blockies-0.schema.json) and
    [`schema/0002-conformance-fixtures.md`](schema/0002-conformance-fixtures.md) — the machine
    schema and the fixture vectors.
 
 ## What is still missing
 
-- `specs/` — BCM (core model), BPS (process), BCS (composite) as standalone normative drafts.
-  They exist only as prose summaries in the handoff today.
-- `traces/` — execution traces for the four reference scenarios. These should be written
-  **before** the schemas; the traces are what disambiguate the schemas.
-- `ontology/` — the entity and relationship glossary, once the vocabulary settles.
+- **Effects.** F-11 tracks the lifecycle; nothing declares an effect, its result type, or the
+  event input that receives a completion.
+- **World policy.** Actor authority (F-13, F-14) has no home in the document. Who may deliver an
+  event to which endpoint is currently undefined.
+- **Canonical encoding.** Key order, number form, and decimal form for digesting are unresolved,
+  so `sha256:` values cannot yet be produced reproducibly.
+- **An ontology glossary.** The vocabulary is consistent across the documents but has no single
+  alphabetical reference.
 
 ## Repository plan
 
