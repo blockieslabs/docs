@@ -33,6 +33,9 @@ deleted: the trail is the point.
 | D-026 | Empty Composites dissolve; folds revalidate | active |
 | D-027 | JS/TS first, WASM second, no native libraries | active |
 | D-028 | Terminology and retention | active |
+| D-029 | Process phase scheduling and failure classes | active |
+| D-030 | Runs never observe mid-transaction values | active |
+| D-031 | Attention is bindings ∪ sessions | active |
 
 ## Lineage
 
@@ -400,4 +403,33 @@ flowchart TB
     WASM --> RT
     RT --> REN["Renderer package<br/>presentation plugin"]
     X["Native libraries"] -. "never" .-> RT
+```
+
+## D-029 — Process phase scheduling
+
+```mermaid
+flowchart LR
+    EP["event phase<br/>reducers, FIFO"] --> PP["process phase<br/>ready runs, FIFO<br/>one step per run"]
+    PP --> VP["value phase"]
+    PP -. "already stepped → defer" .-> NX["next transaction"]
+```
+
+## D-030 — Runs never observe mid-transaction values
+
+```mermaid
+flowchart LR
+    T["transaction N<br/>event → process → value"] --> W["value change satisfies<br/>a dependency condition"]
+    W --> S["step scheduled"]
+    S --> T2["transaction N+1<br/>run reads one coherent generation"]
+```
+
+## D-031 — Attention is bindings ∪ sessions
+
+```mermaid
+flowchart LR
+    A["external actor"] --> S["session viewport + grants"]
+    R["in-world run"] --> B["declared input bindings"]
+    S --> AT["attention"]
+    B --> AT
+    AT -. "grants nothing" .-> X["no membership · no management · no access"]
 ```

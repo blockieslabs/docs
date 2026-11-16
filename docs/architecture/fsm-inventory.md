@@ -280,7 +280,7 @@ Not designed. Placeholder so the gap is visible.
 | Authority | Runtime for `wake`/`ttl`; the run for `await`/`cancel` |
 | Durability | Durable with the run (it is why the run is `waiting`) |
 | Recovery | A `pending` condition survives a crash and is re-evaluated at load; a condition whose target no longer exists resolves to `cancelled` |
-| Projection | **Wait reason**: `human_permission`, `human_question`, `human_auth`, `external_service`, `timer`, `dependency` |
+| Projection | **Wait reason**: `human_permission`, `human_question`, `human_auth`, `external_service`, `timer`, `dependency`, `inbox` |
 
 "Waiting" without a reason is not implementable and not renderable. The reason is the entire
 value of the status: it distinguishes "needs a human" from "waiting on a service".

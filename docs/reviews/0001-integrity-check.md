@@ -146,4 +146,5 @@ Still open: I-006, I-011 through I-022.
 | I-027 | D-028 | Handoff amendment note recorded |
 | I-028 | D-028 | Retention and archival defined |
 
-All findings closed except I-023 (cosmetic ordering).
+All 28 findings closed. I-001 was completed by D-031 (attention is bindings ∪ sessions); I-023 was
+fixed when F-20 was reordered.
