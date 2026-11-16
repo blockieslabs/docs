@@ -32,7 +32,7 @@ Two rules:
 | Authority | World transaction (create/attach); scheduler (`queued→running`); the run's own step result (`running→waiting/succeeded/failed`); command + policy (`→cancelling`); cancellation acknowledgement (`cancelling→cancelled`) |
 | Durability | Durable. Full run record, including parent run, host, definition ref, checkpoint |
 | Recovery | On load, a run in `running` with no live executor becomes `failed` (crash) or resumes from its last checkpoint, per the host's declared policy. This must be stated, not assumed |
-| Projection | Status, host, parent, elapsed, last checkpoint, representation flag |
+| Projection | Status, host, parent, elapsed, last checkpoint, acknowledgement, placement present/null |
 
 `waiting` and `suspended` are distinct: `waiting` means the run has an unsatisfied wake
 condition and is expected to continue; `suspended` means execution is withheld by policy or
@@ -203,18 +203,13 @@ generation N+1 is not silently showing N as if it were current.
 Manager authority is a *grant* scoped to one Composite, not a role and not a property of the
 process definition.
 
-### F-15 — Attention
+### F-15 — Attention (withdrawn)
 
-| | |
-|---|---|
-| Level | A6 |
-| States | `observing`, `assisting`, `ended` |
-| Authority | The observing actor |
-| Durability | Durable if it is meant to be visible in the World; otherwise drop the concept |
-| Projection | Who is watching what |
+Withdrawn by D-009. Attention is a projection, not an entity. See the derived projections table.
 
-Candidate for deletion. If attention has no observable effect and grants no data, it is
-documentation, not state. Keep it only if the visualisation needs "an agent is looking here".
+Open detail (integrity finding I-001): D-009 derives attention from session scopes, which does
+not cover an in-world supervisor Blockie — it observes through its process's input bindings,
+not through a session. The projection must union both sources before this is closed.
 
 ### F-16 — Connection / Route
 
@@ -314,6 +309,7 @@ Not designed. Placeholder so the gap is visible.
 | Manager availability | F-01 status of the designated manager | Availability is a query, designation is the state |
 | Interface completeness | F-08 mode plus route table | It is a validation result |
 | Run count per Composite | F-01 hosts in the membership tree | Needed for level-of-detail rendering, not for semantics |
+| Attention | Session scopes ∪ process input bindings | D-009: derived, grants nothing, implies nothing |
 
 ## User-declared FSMs (proposal)
 
