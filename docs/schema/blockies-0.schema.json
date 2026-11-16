@@ -76,7 +76,8 @@
         "members": { "type": "array", "items": { "$ref": "#/$defs/MemberEdge" } },
         "manager": { "$ref": "#/$defs/ManagerDesignation" },
         "aliases": { "type": "array", "items": { "$ref": "#/$defs/Alias" } },
-        "folds": { "type": "array", "items": { "$ref": "#/$defs/Fold" } }
+        "folds": { "type": "array", "items": { "$ref": "#/$defs/Fold" } },
+        "presentation": { "$ref": "#/$defs/CompositePresentation" }
       },
       "additionalProperties": false
     },
@@ -128,6 +129,16 @@
       "properties": {
         "run": { "$ref": "#/$defs/Id" },
         "epoch": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "CompositePresentation": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "renderer": { "$ref": "#/$defs/DefRef" },
+        "body": { "$ref": "#/$defs/EntityRef" }
       },
       "additionalProperties": false
     },
@@ -239,7 +250,8 @@
             "scale": { "type": "number", "exclusiveMinimum": 0 }
           },
           "additionalProperties": false
-        }
+        },
+        "layer": { "type": "integer" }
       },
       "additionalProperties": false
     },

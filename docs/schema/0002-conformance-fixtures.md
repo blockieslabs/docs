@@ -50,6 +50,8 @@ concept has been reintroduced.
 | VAL-014 | A run whose `host.claims` names an input the Type does not mark claimable | Reject |
 | VAL-015 | A run whose `host.publishes` names a port not marked `producer: process` | Reject |
 | VAL-016 | A dispatch target outside `grant.memberSet` | Reject |
+| VAL-017 | `presentation.body` naming something that is not a direct member | Reject |
+| VAL-018 | `presentation.renderer` resolving to a Type package instead of a renderer package | Reject |
 
 ## Runtime vectors
 

@@ -39,6 +39,10 @@ deleted: the trail is the point.
 | D-032 | Dispatch is not a Composite alias source | active |
 | D-033 | The dispatch endpoint is a grant, not a port | active |
 | D-034 | Absence encodes unplaced and dissolved | active |
+| D-035 | Composite presentation is a record, not a Type | active |
+| D-036 | Chrome is never interactive | active |
+| D-037 | A Composite's own appearance is static per revision | active |
+| D-038 | Members draw above the assembly; layer orders members | active |
 
 ## Lineage
 
@@ -446,4 +450,21 @@ flowchart LR
     V -- "yes" --> M["member event input"]
     V -- "no" --> X["rejected"]
     A["Composite aliases"] -. "never expose dispatch" .-> X
+```
+
+## D-035 / D-038 — What draws a Composite, and in what order
+
+```mermaid
+flowchart TB
+    subgraph S["Composite scope"]
+        CH["chrome / body surface<br/>not interactive"]
+        M1["member, layer 0"]
+        M2["member, layer 2"]
+        M3["member, layer 2<br/>tie broken by id"]
+    end
+    CH --> M1
+    M1 --> M2
+    M2 --> M3
+    P["presentation record<br/>label · renderer? · body?"] -. "describes, never computes" .-> CH
+    X["styling, typography"] -. "renderer package" .-> CH
 ```

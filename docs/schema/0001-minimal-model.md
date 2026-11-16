@@ -68,6 +68,13 @@ type Composite = {
   manager?: { run: Id; epoch: number };                       // F-07, D-018
   aliases: Alias[];
   folds: Fold[];
+  presentation?: CompositePresentation;                       // D-035
+};
+
+type CompositePresentation = {
+  label: string;
+  renderer?: DefRef;          // a renderer package, not a Type
+  body?: EntityRef;           // a direct member that stands for the assembly
 };
 
 type MemberEdge = {
@@ -113,6 +120,7 @@ type Placement = {
   // keyed by entity id in world.placements; the key is authoritative, no embedded id
   scope: { frame: Id } | { composite: Id };   // nearest placed ancestor scope
   transform: { translate: [number, number]; scale: number };
+  layer?: number;                             // draw order within the scope, default 0 (D-038)
 };
 ```
 
@@ -244,6 +252,8 @@ to the port it constrains, and a validator reading one port has everything it ne
 | `ProcessDefinition.host` | D-016, D-017 |
 | `WakeCondition` | F-21, D-030 |
 | `Port.claimable` / `producer` | D-016, D-017 |
+| `Composite.presentation` | D-035 |
+| `Placement.layer` | D-038 |
 
 ## Cut, and why
 
@@ -258,6 +268,7 @@ to the port it constrains, and a validator reading one port has everything it ne
 | `attention` | Projection over bindings and sessions (D-031) |
 | `manager` capability list | One verb, expressed as the run's grant (D-033) |
 | Grid, zoom, hover, selection | View state, never World state (D-004) |
+| Styling, typography, materials | Renderer package territory (D-035) |
 | Derived outputs, generations | Runtime snapshot, not the document |
 | Event queues, dirty flags | Transient |
 | Effect outbox | Runtime state, not the document (D-028) |
