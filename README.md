@@ -64,7 +64,7 @@ levels; a repository should be created only when a level has something to build.
 
 ## Amendments to the handoff
 
-The handoff (`blockies-architecture-handoff/BLOCKIES-HANDOFF.md`) predates these decisions and is
+The handoff (`reference/handoff/BLOCKIES-HANDOFF.md`) predates these decisions and is
 amended by them. Known deltas:
 
 | Handoff statement | Amended by |
