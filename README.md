@@ -27,6 +27,8 @@ document says so in its header.
 7. [`schema/blockies-0.schema.json`](schema/blockies-0.schema.json) and
    [`schema/0002-conformance-fixtures.md`](schema/0002-conformance-fixtures.md) — the machine
    schema and the fixture vectors.
+8. [`performance/0001-bottleneck-analysis.md`](performance/0001-bottleneck-analysis.md) — where a
+   conforming implementation will be slow, by layer, with the technique that removes each cost.
 
 ## What is still missing
 
