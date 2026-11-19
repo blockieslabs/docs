@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scaling out · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / <a href="index.html">Performance</a> / Scaling</p>
+  <h1 id="scale">Scaling out</h1>
+  <p class="lede">Beyond one process and one screen: sandboxes, sessions, views, disk, and the
+  network. These are the costs that appear when the World has to leave memory.</p>
+
+  <h2 id="sandbox">The sandbox is a tax</h2>
+  <p>A step runs in a JS or WASM adapter. The adapter is bounded and deterministic: no ambient
+  time, randomness, network or filesystem (D-027). That isolation is the point, and it has a price.
+  The boundary is crossed for every step, and the crossing costs far more than the work inside
+  it.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  CORE["A1 core<br/>deterministic"] -- "snapshot<br/>state · config · reads · inbox" --> AD["adapter<br/>QuickJS or WASM"]
+  AD -- "result<br/>state · publish · wait" --> CORE
+  AD --> MOD["module<br/>digest-pinned"]
+  CORE -. "budget" .-> AD
+  </script></div>
+
+  <table>
+    <thead><tr><th>Operation</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Enter or leave a JS context</td><td>0.1–1 µs</td></tr>
+      <tr><td>Create a fresh context</td><td>1–50 ms</td></tr>
+      <tr><td>Parse and compile a module</td><td>1–100 ms</td></tr>
+      <tr><td>Marshal a small object</td><td>0.5–5 µs</td></tr>
+      <tr><td>Marshal a 1 MB buffer</td><td>0.5–2 ms</td></tr>
+    </tbody>
+  </table>
+
+  <p>A step with ten microseconds of actual work and three hundred microseconds of setup is 97%
+  overhead. At ten thousand steps per second, that is three seconds of setup per second of work.
+  The interpreter is the second problem: QuickJS or Boa is two to fifty times slower than a JIT on
+  numeric code, which is why D-027 makes WASM the second adapter rather than an afterthought.</p>
+
+  <p>Five fixes, in order:</p>
+  <ol>
+    <li><strong>One context per World, pooled per definition digest.</strong> Reset state between
+    steps by restoring a heap snapshot or clearing a dedicated realm, not by destroying the
+    isolate.</li>
+    <li><strong>Compile once per digest.</strong> The digest is the cache key. A definition that
+    has been seen is a pointer lookup, not a parse.</li>
+    <li><strong>Batch the boundary.</strong> Pass a snapshot of all inputs for a batch of nodes,
+    receive all outputs. A spreadsheet column becomes one call with typed arrays.</li>
+    <li><strong>Share memory with WASM.</strong> Values are offsets and lengths into one linear
+    memory region, not copies. This is the difference between a microsecond and a millisecond for a
+    large array.</li>
+    <li><strong>Use WASM for hot Types.</strong> A Type that runs on every cell or every frame is a
+    SIMD kernel, not an interpreted function.</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">The constraint on all of it</span>
+    <p>A pooled context must not leak state between runs. The cheapest guarantee is structural:
+    the step's input is the only way in, and the result is the only way out. If a step can read a
+    global, the pool is a correctness bug waiting for a load spike.</p>
+  </div>
+
+  <h2 id="effects">Effects are I/O, not computation</h2>
+  <p>An effect is an authorised external operation performed after commit (F-11). It is where the
+  outside world gets in: an HTTP call, a file write, a message to another system. The latency is
+  not yours to optimise; a network round trip is milliseconds to seconds.</p>
+  <p>The architecture already has the right shape: commit, then execute, then deliver the result
+  as an event in a later transaction. The performance rules follow from it:</p>
+  <ul>
+    <li><strong>Never block the loop on an effect.</strong> Use an async outbox with a concurrency
+    limit, not a synchronous call.</li>
+    <li><strong>Batch completions.</strong> Ten effects finishing in the same window should be one
+    transaction, not ten.</li>
+    <li><strong>Keep an idempotency key per effect.</strong> At-least-once delivery is the contract;
+    the key is what makes the retry safe.</li>
+    <li><strong>Bound the dedup store.</strong> TTL plus compaction; an unbounded set of every
+    effect ever executed is a memory leak with a correctness story.</li>
+  </ul>
+
+  <h2 id="simulation">Simulation must not become an event storm</h2>
+  <p>A physics or 3D service is an effect-plus-derived-output provider. It may not write Blockie
+  state directly; it publishes through a declared channel. That is the right rule, and it creates
+  a temptation: publish every changed entity on every tick.</p>
+  <p>At 60 Hz with a thousand moving entities, that is sixty thousand events per second, each
+  wanting a transaction. The fix is to decouple the simulation tick from the transaction rate:</p>
+  <ul>
+    <li>Publish on change or on a threshold, not on every tick.</li>
+    <li>Coalesce samples per region or per entity.</li>
+    <li>Keep the tick fixed and deterministic; let the host decide when to commit.</li>
+    <li>Use a broadphase (BVH, grid, spatial hashing) so the simulation itself is not
+    <code>O(n²)</code>.</li>
+  </ul>
+
+  <h2 id="views">One index, many views</h2>
+  <p>A view is a viewport plus a renderer plus a grant set. Views do not copy entities (D-007).
+  That saves memory, but it creates a per-generation cost: each view has to decide what it can
+  see.</p>
+  <p>If each view filters the World independently, the cost is <code>V × N</code> per generation.
+  If each view also re-evaluates grants per entity, it is <code>V × N × policy</code>. If each view
+  is serialised independently, it is <code>V × N</code> encodes. Ten views of ten thousand
+  entities is a hundred thousand entity visits per frame, before drawing.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  GEN["committed generation"] --> IDX["one spatial and<br/>interest index"]
+  IDX --> V1["view A<br/>visible bitset"]
+  IDX --> V2["view B<br/>visible bitset"]
+  IDX --> V3["view C<br/>visible bitset"]
+  V1 --> R1["render A"]
+  V2 --> R2["render B"]
+  V3 --> R3["render C"]
+  </script></div>
+
+  <p>Build the index once per generation. Each view holds a bitset of visible entity handles,
+  updated incrementally when the viewport or the World changes. Filtering is a bitwise
+  <code>AND</code>, which is SIMD-friendly and <code>O(N/64)</code>.</p>
+  <p>Grants compile the same way. A grant on a Composite covers its public aliases only (C-55).
+  Precompute, per principal and scope, a bitset of permitted endpoints. A command check is a bit
+  test, recomputed on policy or membership change rather than per command.</p>
+
+  <div class="callout warn">
+    <span class="label">Redaction happens before publish</span>
+    <p>A renderer is never an enforcement point (C-57). If the host sends an entity to a view that
+    may not read it, hiding it in the renderer is too late. The host must produce a per-view
+    projection that omits it, once per generation, from the shared index.</p>
+  </div>
+
+  <p>Catch-up is the other half. A view that has not acknowledged generation <code>N</code> should
+  not receive every intermediate delta. Give it a keyframe at <code>N+k</code> and let it resume.
+  <code>catching_up</code> is the honest state; the fix is to make catching up cheap, not to
+  pretend the view is current.</p>
+
+  <h2 id="durability">Durability is a log, not a document</h2>
+  <p>If every commit <code>fsync</code>s the document, throughput is capped by the disk: 100–1000
+  commits per second at best, often much less. If every commit writes the whole document, a
+  session is quadratic in document size.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  TX["transaction"] --> LOG["append record<br/>to WAL"]
+  LOG --> BUF["in-memory buffer"]
+  BUF -- "group commit" --> DISK["fsync"]
+  LOG --> SNAP["periodic snapshot"]
+  SNAP --> COMPACT["truncate the log"]
+  </script></div>
+
+  <p>The write-ahead log is the durability boundary. Append a record per transaction, buffer
+  records, and <code>fsync</code> once per batch or once per timer tick. A crash replays the log.
+  Periodically write a chunked snapshot and truncate the log, so recovery does not replay a
+  week of history.</p>
+  <p>The snapshot is chunked, so writing it is proportional to what changed since the last
+  snapshot. The log and the archive compress well: entity records are highly repetitive, with the
+  same keys and the same Types, so zstd with a dictionary is a large win at low CPU cost.</p>
+
+  <h3>Terminal runs are not hot</h3>
+  <p>Occupancy only cares about non-terminal runs. But the registry retains every finished run for
+  acknowledgement (F-22), and every scan pays for all of them. A long-lived World accumulates
+  millions of finished runs while the hot set stays small.</p>
+  <p>Partition the registry by liveness: non-terminal runs in the hot table, terminal and
+  acknowledged runs in a cold archive. The registry is still authoritative, and identity still
+  survives (C-9, C-10); it is just partitioned. A <code>host → active run</code> index makes the
+  hot path constant time.</p>
+
+  <h2 id="sync">Sync is a Merkle walk</h2>
+  <p>Multi-client sync is deferred (F-20), but the shape follows from the commit design. If the
+  document is a Merkle tree of chunks, two hosts compare roots and descend only where they differ.
+  Each entity carries a version vector, so a conflict is detectable without shipping the World.</p>
+  <p>What does not work is broadcasting full state per edit: it is <code>O(W)</code> per change and
+  it gets worse as the World grows. Delta sync, keyframes and interest-based replication are the
+  only shapes that survive a large World.</p>
+
+  <h2>The A2 and A3 findings</h2>
+  <p>Thirteen adapter findings and seventeen host findings. The prose above covers the clusters;
+  the tables are the reference.</p>
+
+  <h3>A2 — Adapters</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>PF-053</td><td>step</td><td>QuickJS or Boa is 2–50× slower than a JIT on numeric code</td><td>T1</td><td>A</td><td>WASM for hot Types; optional JIT tier</td></tr>
+      <tr><td>PF-054</td><td>step</td><td>A JS context is created per step</td><td>T1</td><td>I</td><td>Pool and reuse contexts</td></tr>
+      <tr><td>PF-055</td><td>step</td><td>Modules parsed and compiled per use</td><td>T1</td><td>I</td><td>Content-addressed compile cache</td></tr>
+      <tr><td>PF-056</td><td>step</td><td>Values marshalled as JSON or structured clone</td><td>T1</td><td>A</td><td>Binary ABI, typed arrays, shared memory</td></tr>
+      <tr><td>PF-057</td><td>effect</td><td>External I/O awaited synchronously</td><td>T1</td><td>A</td><td>Async outbox, concurrency limits</td></tr>
+      <tr><td>PF-058</td><td>effect</td><td>Idempotency store grows without bound</td><td>T3</td><td>I</td><td>TTL, compaction, bounded window</td></tr>
+      <tr><td>PF-059</td><td>tick</td><td>A simulation tick becomes one event per changed entity</td><td>T2</td><td>A</td><td>Coalesce samples; publish on threshold</td></tr>
+      <tr><td>PF-060</td><td>tick</td><td>Physics broadphase is <code>O(n²)</code></td><td>T2</td><td>I</td><td>BVH, grid, spatial hashing</td></tr>
+      <tr><td>PF-061</td><td>step</td><td>Capabilities checked dynamically per call</td><td>T2</td><td>I</td><td>Check at attach, carry a bitset</td></tr>
+      <tr><td>PF-062</td><td>step</td><td>WASM↔JS boundary crossed per value</td><td>T1</td><td>I</td><td>Batch calls; shared memory</td></tr>
+      <tr><td>PF-063</td><td>step</td><td>Large values copied at every boundary</td><td>T2</td><td>A</td><td>Blob store, zero-copy views</td></tr>
+      <tr><td>PF-064</td><td>step</td><td>One sandbox per entity rather than per Type</td><td>T2</td><td>I</td><td>Share module and context pool per digest</td></tr>
+      <tr><td>PF-065</td><td>effect</td><td>Effect results arrive one per transaction, unordered per target</td><td>T2</td><td>A</td><td>Batch completions; per-target ordered outbox</td></tr>
+    </tbody>
+  </table>
+
+  <h3>A3 — Host and session</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>PF-066</td><td>world</td><td>One authoritative loop serialises every session and World</td><td>T2</td><td>A</td><td>Actor per World; shard Worlds; offload I/O</td></tr>
+      <tr><td>PF-067</td><td>generation</td><td>Each view filters the whole World every generation</td><td>T2</td><td>A</td><td>One index per generation, one bitset per view</td></tr>
+      <tr><td>PF-068</td><td>session</td><td>Catch-up replays every generation from N to M</td><td>T2</td><td>A</td><td>Keyframes plus delta log</td></tr>
+      <tr><td>PF-069</td><td>command</td><td>Grants evaluated by walking policy per command</td><td>T2</td><td>A</td><td>Capability bitsets per principal and scope</td></tr>
+      <tr><td>PF-070</td><td>commit</td><td>Every commit <code>fsync</code>s</td><td>T1</td><td>A</td><td>WAL plus group commit</td></tr>
+      <tr><td>PF-071</td><td>commit</td><td>Every save writes the whole document</td><td>T2</td><td>A</td><td>Incremental snapshot; log-structured store</td></tr>
+      <tr><td>PF-072</td><td>session</td><td>Sync broadcasts full state rather than a delta</td><td>T2</td><td>A</td><td>Delta sync, version vectors, Merkle comparison</td></tr>
+      <tr><td>PF-073</td><td>session</td><td>Session queues and view state grow without backpressure</td><td>T2</td><td>I</td><td>Bounded queues; explicit backpressure</td></tr>
+      <tr><td>PF-074</td><td>tick</td><td>Timers found by scanning all waiting runs</td><td>T2</td><td>I</td><td>Timing wheel or heap</td></tr>
+      <tr><td>PF-075</td><td>tick</td><td>Every inbox append wakes the run</td><td>T2</td><td>I</td><td>Wake when the run reaches the front</td></tr>
+      <tr><td>PF-076</td><td>command</td><td>Agents submit one command per intent</td><td>T1</td><td>A</td><td>Batch API, coalescing, rate limits</td></tr>
+      <tr><td>PF-077</td><td>generation</td><td>Each client serialised independently</td><td>T2</td><td>I</td><td>Encode once, filter per view, share buffers</td></tr>
+      <tr><td>PF-078</td><td>generation</td><td>Snapshot isolation copies or blocks on reads</td><td>T2</td><td>A</td><td>MVCC, epoch reclamation</td></tr>
+      <tr><td>PF-079</td><td>generation</td><td>No interest management: a view subscribes to everything</td><td>T2</td><td>A</td><td>Per-view interest set from viewport and grant</td></tr>
+      <tr><td>PF-080</td><td>session</td><td>Slow views receive every generation</td><td>T2</td><td>A</td><td>Generation coalescing; keyframe on demand</td></tr>
+      <tr><td>PF-081</td><td>world</td><td>Cold start parses, validates and rehydrates everything</td><td>T2</td><td>A</td><td>Binary snapshot, lazy sections, parallel validation</td></tr>
+      <tr><td>PF-082</td><td>world</td><td>Several Worlds contend for one loop and allocator</td><td>T3</td><td>A</td><td>Per-World arenas; work stealing; admission control</td></tr>
+    </tbody>
+  </table>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Why is creating a JS context per step so much worse than it sounds?</summary>
+      <p>Because it is milliseconds against microseconds. A step with ten microseconds of work and
+      a millisecond of setup is 99% setup. Pooling the context moves the cost to once per
+      definition, not once per step.</p>
+    </details>
+    <details>
+      <summary>Why does a per-view filter not need a copy of the World?</summary>
+      <p>The view holds a bitset of visible handles, not entities. The shared generation is
+      immutable; the bitset selects from it. Memory scales with the number of entities, not with
+      entities times views.</p>
+    </details>
+    <details>
+      <summary>Why is a WAL faster than writing the document?</summary>
+      <p>The log record is proportional to the change, and the <code>fsync</code> can be shared
+      across a batch. The document write is proportional to the World and cannot be shared without
+      a snapshot strategy.</p>
+    </details>
+    <details>
+      <summary>Why can a renderer not be the place that hides a restricted entity?</summary>
+      <p>Because by then the entity has already been sent. C-57 makes the renderer a presentation
+      layer, not an enforcement point; the host must omit the entity before publishing the view.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="data.html">← Data and indexes</a>
+    <a href="experience.html">Next: drawing and observing →</a>
+  </div>
+</main>
+<script src="../assets/vendor/pele.global.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

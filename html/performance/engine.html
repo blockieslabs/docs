@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The engine loop · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / <a href="index.html">Performance</a> / Engine</p>
+  <h1 id="engine">The engine loop</h1>
+  <p class="lede">A transaction is the unit of cost. Everything inside it should scale with what
+  changed, not with the size of the World. Four places decide whether that is true.</p>
+
+  <h2 id="phases">The nine phases</h2>
+  <p>A transaction is deliberately boring: it accepts inputs, applies them, stabilises derived
+  values, and commits one new generation. The phases are ordered so that nothing observes a
+  half-applied state.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  A["accept<br/>who, what"] --> B["validate<br/>shape, authority"]
+  B --> C["stage<br/>delta, not copy"]
+  C --> D["event phase<br/>reducers, FIFO"]
+  D --> E["process phase<br/>bounded steps"]
+  E --> F["value phase<br/>stabilise"]
+  F --> G["prepare<br/>checks, hashes"]
+  G --> H["commit<br/>new generation"]
+  H --> I["publish<br/>delta to views"]
+  I --> J["effects<br/>after commit"]
+  </script></div>
+
+  <table>
+    <thead><tr><th>Phase</th><th>What it does</th><th>What the cost scales with</th></tr></thead>
+    <tbody>
+      <tr><td>accept</td><td>identify the actor, the target, the input</td><td>one input</td></tr>
+      <tr><td>validate</td><td>payload shape, authority, revision</td><td>payload size</td></tr>
+      <tr><td>stage</td><td>record the intended changes without applying them</td><td>write set</td></tr>
+      <tr><td>event phase</td><td>run reducers until the event queue is empty</td><td>events delivered</td></tr>
+      <tr><td>process phase</td><td>step each ready run, at most once</td><td>runs stepped</td></tr>
+      <tr><td>value phase</td><td>stabilise derived values</td><td>dirty closure</td></tr>
+      <tr><td>prepare</td><td>compute hashes, check invariants</td><td>write set</td></tr>
+      <tr><td>commit</td><td>bump the generation, make changes visible</td><td>write set</td></tr>
+      <tr><td>publish</td><td>send the generation to views</td><td>changed entities × views</td></tr>
+    </tbody>
+  </table>
+
+  <p>Two costs hide in that table. The value phase can accidentally scale with the whole graph
+  instead of the dirty part. Commit and publish can accidentally scale with the whole document
+  instead of the write set. Those are the two places a conforming engine becomes quadratic.</p>
+
+  <h2 id="value">The value phase is where engines die</h2>
+  <p>Derived values form a declared graph: a port's value is a function of its inputs. D-011 chose
+  topological stabilisation with equality-gated propagation, and explicitly rejected runtime
+  dependency tracking. That is the right trade for a serialisable World, but it puts all the
+  pressure on how the graph is evaluated.</p>
+
+  <h3>The naive version</h3>
+  <p>The obvious stabiliser is a fixpoint loop. Visit every node; if anything changed, do it
+  again.</p>
+
+  <pre><code>repeat
+  changed = false
+  for node in all_nodes
+    value = compute(node)
+    if value != node.value
+      node.value = value
+      changed = true
+until not changed</code></pre>
+
+  <p>On a chain of <code>G</code> nodes, the first pass updates one node, the second updates the
+  next, and so on. That is <code>O(G²)</code> visits. At ten thousand nodes it is tens of millions
+  of computes, each with a deep equality check and possibly a sandbox call.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  subgraph NAIVE["fixpoint: revisit everything"]
+    N1["visit all nodes"] --> N2{"anything<br/>changed?"}
+    N2 -- yes --> N1
+    N2 -- no --> N3["done"]
+  end
+  subgraph TOPO["topological + dirty closure"]
+    T1["order computed once<br/>per graph revision"] --> T2["mark dirty inputs"]
+    T2 --> T3["visit dirty nodes<br/>in order"]
+    T3 --> T4["stop when a<br/>fingerprint is unchanged"]
+    T4 --> T5["done"]
+  end
+  </script></div>
+
+  <h3>The version that scales</h3>
+  <p>Four changes, in order of impact:</p>
+  <ol>
+    <li><strong>Precompute a topological order.</strong> The graph is declared, so the order is a
+    property of the document, not of the run. Store it as a flat array of integers. A transaction
+    walks the array once, in cache order.</li>
+    <li><strong>Visit the dirty closure, not the graph.</strong> A changed input marks its
+    transitive consumers. A bitset plus a worklist is enough. Most transactions touch a handful of
+    nodes.</li>
+    <li><strong>Compare fingerprints before values.</strong> Give every value a cached canonical
+    hash. Compare hashes first; only a hash match triggers a deep comparison. For interned values,
+    pointer equality is the fast path.</li>
+    <li><strong>Cut off early.</strong> If a node's output fingerprint is unchanged, do not mark
+    its consumers. On a stable graph this removes almost all of the work.</li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">A correctness trap hiding in the optimisation</span>
+    <p><code>sum</code> over floating-point values is not associative. If a fold is evaluated in
+    parallel, or in a different member order, the result changes, and so does the World digest.
+    BCS declares the fold operations but never fixes the reduction order. Until it does, a fast
+    fold and a reproducible fold are not the same fold. The fix is a fixed order, usually member
+    ID ascending with a fixed tree shape, or exact arithmetic for the numeric types that need it.</p>
+  </div>
+
+  <h2 id="overhead">The fixed cost of a transaction</h2>
+  <p>Every input opens a transaction. That is correct: a transaction is the unit of consistency.
+  But the fixed cost is paid whether the payload is a database migration or a button press.</p>
+
+  <table>
+    <thead><tr><th>Component</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Accept, validate envelope, authorise</td><td>1–20 µs</td></tr>
+      <tr><td>Stage and journal</td><td>1–50 µs, depending on copy strategy</td></tr>
+      <tr><td>Commit bookkeeping, generation bump</td><td>1–10 µs</td></tr>
+      <tr><td>Persist (<code>fsync</code>)</td><td>100–10,000 µs</td></tr>
+      <tr><td>Publish to <code>V</code> views</td><td>10–1000 µs</td></tr>
+      <tr><td>Trace record</td><td>1–10 µs</td></tr>
+    </tbody>
+  </table>
+
+  <p>At a thousand inputs per second, a one-millisecond commit already consumes the whole second.
+  The work inside the transaction might be ten microseconds. The architecture is paying a database
+  transaction for a keystroke.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  subgraph ONE["one transaction per input"]
+    I1["input"] --> C1["commit + fsync"]
+    I2["input"] --> C2["commit + fsync"]
+    I3["input"] --> C3["commit + fsync"]
+  end
+  subgraph BATCH["one batch"]
+    J1["three inputs"] --> K1["one commit<br/>one fsync<br/>one publish"]
+  end
+  </script></div>
+
+  <p>The fix is batching at the boundary, not inside the transaction. A3 collects inputs that
+  arrive in a short window and opens one transaction. Semantics do not change: P-24 still says one
+  step per run per transaction, and P-28 still drains the event queue before the process phase.
+  Batching changes how many transactions carry the same events, not what a transaction means.</p>
+
+  <p>Two supporting changes make the batch cheap. <strong>Coalesce by target and port</strong>:
+  two deliveries to the same event input keep their order in the queue but need one commit.
+  <strong>Group commit</strong>: one <code>fsync</code> per batch, with the batch boundary in the
+  log record.</p>
+
+  <h3>Rollback is not a copy</h3>
+  <p>If abort is implemented by cloning the World, a 10 MB document costs 10 MB per transaction.
+  Use an undo journal: record the old value of each field before writing it, and replay in reverse
+  on abort. For snapshots that must survive a commit, use a persistent map, so a new generation
+  shares every untouched subtree. D-011 already asks for this; in practice it is a requirement,
+  not an optimisation.</p>
+
+  <h2 id="latency">Steps are bounded, and that costs latency</h2>
+  <p>Three rules compose into a latency multiplier:</p>
+  <ul>
+    <li>A run steps at most once per transaction (P-24).</li>
+    <li>A step that returns neither an outcome nor a wait goes back to <code>queued</code> and
+    steps again in a later transaction (P-22).</li>
+    <li>A dependency wait is satisfied by a value change visible only in the value phase, so the
+    run is scheduled for a later transaction (P-33).</li>
+  </ul>
+
+  <p>A program that needs <code>K</code> steps takes <code>K</code> transactions. A chain of
+  <code>K</code> dependent runs takes <code>K</code> transactions and <code>K</code> publishes. At
+  one millisecond per commit, a thousand-step program takes a second of wall clock even if each
+  step is ten microseconds of work. A reactive pipeline of twenty stages has a twenty-frame lag at
+  60 Hz.</p>
+
+  <p>This is deliberate. Bounded steps give latency a ceiling and cancellation a clean point. The
+  fix is not to remove the bound. The fix is to stop paying full commit and publish cost for each
+  unit.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  T1["transaction 1<br/>step 1"] --> T2["transaction 2<br/>step 2"]
+  T2 --> T3["transaction 3<br/>step 3"]
+  T3 --> T4["…"]
+  T4 --> P["one publish<br/>one render"]
+  </script></div>
+
+  <p>Call this a <strong>turn</strong>: several transactions back to back, one publish at the end.
+  Each transaction still satisfies P-24 and P-34; the turn is a host-level grouping. It removes
+  <code>K−1</code> publishes, renders and network frames. It does not remove <code>K−1</code>
+  commits, so pair it with cheap commits.</p>
+
+  <div class="callout">
+    <span class="label">Do not add a fast run kind</span>
+    <p>D-011 is explicit: there is no performance tier of process. Speed is an engine property.
+    Adding a tier for speed forks semantics, and the tier becomes a second architecture with its
+    own bugs.</p>
+  </div>
+
+  <h2 id="commit">Commit is not a save of everything</h2>
+  <p>A commit produces a new generation. If producing it serialises the whole document, hashes the
+  whole document, and sends the whole document to every view, then a session of <code>T</code>
+  transactions is <code>O(T × W)</code>. For a 10 MB World and a thousand transactions, that is
+  10 GB of serialisation. The cost is not the bytes; it is that the work is proportional to
+  everything instead of to what changed.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  ROOT["document root<br/>Merkle root"] --> B["blockies chunk"]
+  ROOT --> R["runs chunk"]
+  ROOT --> P["placements chunk"]
+  B --> B1["leaf: blockie A"]
+  B --> B2["leaf: blockie B"]
+  R --> R1["leaf: run 1"]
+  P --> P1["leaf: placement 1"]
+  </script></div>
+
+  <p>Canonicalise per entity, not per document. A commit serialises only the entities in its write
+  set. The document digest is a Merkle root over table chunks, so unchanged chunks reuse their
+  hash. Chunk by table and by key range, typically 4–64 KB leaves. A save writes dirty leaves; a
+  sync compares roots and descends only where they differ.</p>
+
+  <p>This is the same shape as Git's object model, and it fits C-11: one logical document, many
+  physical chunks. The chunk is a storage detail. It must not become a place where occupancy or
+  status is persisted.</p>
+
+  <div class="callout warn">
+    <span class="label">Why canonical encoding is on the critical path</span>
+    <p>Without a canonical form, digest-pinned definitions cannot be produced reproducibly
+    (PF-004), and two hosts cannot compare World digests (PF-072). The choice also fixes the cost:
+    a form with sorted keys and a defined number form can be hashed incrementally. A form that
+    depends on map iteration order cannot.</p>
+  </div>
+
+  <h2>The A1 findings</h2>
+  <p>Thirty-two findings in the core engine. The detail sections above cover the first four
+  clusters; the rest are reference.</p>
+
+  <table>
+    <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>PF-021</td><td>transaction</td><td>Every input opens a full transaction</td><td>T1</td><td>A</td><td>Batch and coalesce; group commit</td></tr>
+      <tr><td>PF-022</td><td>transaction</td><td>Abort clones the World or touched tables</td><td>T1</td><td>A</td><td>Undo journal; copy-on-write pages</td></tr>
+      <tr><td>PF-023</td><td>transaction</td><td>Staging copies whole entities</td><td>T2</td><td>I</td><td>Delta overlay with read/write sets</td></tr>
+      <tr><td>PF-024</td><td>transaction</td><td>Event queue dedup or ordering by scan</td><td>T1</td><td>I</td><td>Ring buffer plus hash set; sequence numbers</td></tr>
+      <tr><td>PF-025</td><td>transaction</td><td>Ready set is a global priority queue keyed by string ID</td><td>T2</td><td>I</td><td>Bucketed FIFO, sort by interned rank</td></tr>
+      <tr><td>PF-026</td><td>transaction</td><td>One step per run per transaction</td><td>T1</td><td>A</td><td>Turns; bounded multi-step per turn</td></tr>
+      <tr><td>PF-027</td><td>transaction</td><td>Budgets checked per instruction or by wall clock</td><td>T2</td><td>I</td><td>Deterministic fuel at block boundaries</td></tr>
+      <tr><td>PF-028</td><td>transaction</td><td>Fixpoint stabilisation over the whole graph</td><td>T1</td><td>A</td><td>Topological order plus dirty closure</td></tr>
+      <tr><td>PF-029</td><td>transaction</td><td>Memoisation hashes all inputs, sometimes costing more than compute</td><td>T2</td><td>I</td><td>Revision counters; hash only at the boundary</td></tr>
+      <tr><td>PF-030</td><td>transaction</td><td>Deep equality on every edge</td><td>T1</td><td>A</td><td>Canonical hash, interning, identity fast path</td></tr>
+      <tr><td>PF-031</td><td>transaction</td><td>Sandbox called once per graph node</td><td>T2</td><td>A</td><td>Fuse nodes into one kernel call</td></tr>
+      <tr><td>PF-032</td><td>transaction</td><td>Values cross the boundary by structured clone</td><td>T2</td><td>A</td><td>Shared memory, typed arrays, handles</td></tr>
+      <tr><td>PF-033</td><td>transaction</td><td>Every inbox append is durable immediately</td><td>T1</td><td>A</td><td>WAL with group commit</td></tr>
+      <tr><td>PF-034</td><td>transaction</td><td>At-least-once delivery keeps an unbounded dedup set</td><td>T2</td><td>A</td><td>Monotonic sequence plus bounded window</td></tr>
+      <tr><td>PF-035</td><td>transaction</td><td>Manager termination searches all Composites</td><td>T2</td><td>I</td><td>Reverse index run → designation</td></tr>
+      <tr><td>PF-036</td><td>transaction</td><td>Cancellation discovers descendants by scanning runs</td><td>T2</td><td>I</td><td>Parent → children adjacency list</td></tr>
+      <tr><td>PF-037</td><td>transaction</td><td>Recovery rehydrates and validates everything eagerly</td><td>T2</td><td>A</td><td>Snapshot plus WAL replay; lazy rehydration</td></tr>
+      <tr><td>PF-038</td><td>generation</td><td>Every view receives a full generation</td><td>T2</td><td>A</td><td>Per-view deltas, keyframes, sharing</td></tr>
+      <tr><td>PF-039</td><td>generation</td><td>Commit serialises the whole document</td><td>T1</td><td>A</td><td>Incremental serialisation; log-structured store</td></tr>
+      <tr><td>PF-040</td><td>transaction</td><td>Run state validated after every step by a generic validator</td><td>T2</td><td>A</td><td>Compiled per-Type validator</td></tr>
+      <tr><td>PF-041</td><td>transaction</td><td>Attach scans port lists for subset checks</td><td>T2</td><td>I</td><td>Interned port IDs and bitsets</td></tr>
+      <tr><td>PF-042</td><td>transaction</td><td>Dispatch scans <code>memberSet</code></td><td>T2</td><td>I</td><td>Immutable hash set or sorted array</td></tr>
+      <tr><td>PF-043</td><td>transaction</td><td>Designation copies the member set on every change</td><td>T3</td><td>I</td><td>Persistent immutable set</td></tr>
+      <tr><td>PF-044</td><td>world</td><td>Traces grow without bound</td><td>T4</td><td>I</td><td>Ring buffer, sampling, binary encoding</td></tr>
+      <tr><td>PF-045</td><td>world</td><td>Single-threaded core cannot use extra cores</td><td>T2</td><td>A</td><td>Deterministic level parallelism; SIMD inside a node</td></tr>
+      <tr><td>PF-046</td><td>world</td><td>WASM linear memory is 32-bit and grows by copying</td><td>T3</td><td>A</td><td><code>memory64</code>, chunks, arenas</td></tr>
+      <tr><td>PF-047</td><td>transaction</td><td>Bulk Composite operations validate per edge</td><td>T2</td><td>A</td><td>One batch validator per operation</td></tr>
+      <tr><td>PF-048</td><td>transaction</td><td>Allocation churn: snapshots, queues, values</td><td>T1</td><td>I</td><td>Arenas reset per transaction; pools</td></tr>
+      <tr><td>PF-049</td><td>transaction</td><td>Integer-keyed maps use the default hasher</td><td>T1</td><td>I</td><td>FxHash or AHash internally</td></tr>
+      <tr><td>PF-050</td><td>transaction</td><td>IDs and port names are not interned</td><td>T1</td><td>I</td><td>Symbol table; integer symbols</td></tr>
+      <tr><td>PF-051</td><td>transaction</td><td>Dependency waits satisfied by scanning all waiting runs</td><td>T2</td><td>A</td><td>Reverse index port → waiting runs</td></tr>
+      <tr><td>PF-052</td><td>generation</td><td>A chain of dependent runs needs one transaction per hop</td><td>T1</td><td>A</td><td>Turns; bounded lookahead; cheap commits</td></tr>
+    </tbody>
+  </table>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Why is a fixpoint loop quadratic on a chain?</summary>
+      <p>Each pass visits every node but propagates a change only one step along the chain. A chain
+      of length <code>G</code> needs <code>G</code> passes, each visiting <code>G</code> nodes, so
+      <code>G²</code> visits. A topological order propagates the whole chain in one pass.</p>
+    </details>
+    <details>
+      <summary>What does batching change, and what does it not change?</summary>
+      <p>It changes how many transactions carry a set of inputs, and therefore how many commits,
+      <code>fsync</code>s, publishes and renders are paid. It does not change what a transaction
+      means: one step per run, one coherent generation, the same ordering rules.</p>
+    </details>
+    <details>
+      <summary>Why is a turn not a violation of P-24?</summary>
+      <p>P-24 limits steps per run per transaction. A turn is several transactions, each still
+      stepping a run at most once. The turn only groups the publishes, so views and renders see one
+      generation instead of many.</p>
+    </details>
+    <details>
+      <summary>Why can a parallel fold change the World digest?</summary>
+      <p>Floating-point addition is not associative, so a different reduction order produces a
+      different result. If the result is part of the document, the digest changes. A fixed
+      reduction order or exact arithmetic keeps it reproducible.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="index.html">← Why performance</a>
+    <a href="data.html">Next: data and indexes →</a>
+  </div>
+</main>
+<script src="../assets/vendor/pele.global.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

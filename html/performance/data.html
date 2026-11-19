@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data and indexes · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / <a href="index.html">Performance</a> / Data</p>
+  <h1 id="data">Data and indexes</h1>
+  <p class="lede">The document is a wire format. The runtime is a data structure. Confusing the two
+  is the most common way to make this architecture slow.</p>
+
+  <h2 id="wire">The document is not the data structure</h2>
+  <p>The schema describes a World as JSON: <code>Record&lt;Id, Blockie&gt;</code>,
+  <code>Record&lt;Id, Run&gt;</code>, and so on. That shape is chosen for validation, diffing and
+  human reading. It is a good file format and a poor runtime layout.</p>
+  <p>Using it directly means every lookup hashes a string, every entity is a small hash table with
+  boxed values, and iterating one field pulls the whole record into cache. The cost is not
+  theoretical: a JSON-shaped entity can be five to twenty times larger than a packed one, and a
+  scan that should touch one cache line per sixteen entities touches one per entity.</p>
+  <p>The fix is not to change the schema. Parse once at load into a runtime layout, and project
+  back at save. The document stays the same; the engine gets a shape it can iterate.</p>
+
+  <div class="callout">
+    <span class="label">The boundary rule</span>
+    <p>JSON lives at the edge: load, save, network, conformance vectors. Inside the engine,
+    entities are handles, fields are columns, and edges are contiguous arrays. Nothing in the
+    specifications requires the in-memory form to match the wire form.</p>
+  </div>
+
+  <h2 id="derived">Derived values are not stored, but they can be cached</h2>
+  <p>C-14 says occupancy, footprint, display status, availability and run counts must not be
+  stored. The reason is sound: a stored derived value gets a second writer, and the two writers
+  eventually disagree.</p>
+  <p>But there is a difference between <strong>storing</strong> a derived value and
+  <strong>materialising</strong> it. A cache that is rebuilt at load, updated in the same
+  transaction as its inputs, never serialised, and never authoritative is not a second source of
+  truth. It is a function of the first truth with a generation stamp.</p>
+  <p>Without that distinction an implementer has two bad choices: violate C-14, or scan on every
+  query. The second is the one that quietly kills the frame budget.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  subgraph TABLES["stored tables"]
+    B["blockies"]
+    R["runs"]
+    P["placements"]
+    C["composites"]
+    X["connections"]
+  end
+  subgraph INDEX["transient indexes"]
+    H["host → active run"]
+    M["member → composite"]
+    A["member → alias"]
+    W["port → waiting runs"]
+    G["composite → connections"]
+  end
+  R --> H
+  B --> M
+  C --> M
+  C --> A
+  R --> W
+  X --> G
+  H --> Q1["occupancy<br/>status<br/>availability"]
+  M --> Q2["membership<br/>validation"]
+  A --> Q3["alias resolution"]
+  W --> Q4["wake-up"]
+  G --> Q5["dissolve<br/>remove member"]
+  </script></div>
+
+  <p>A status query implemented as "scan the run table for a non-terminal run whose host is this
+  Blockie" is <code>O(R)</code> per call. A frame that asks for the status of every Blockie is
+  <code>O(N × R)</code>. At ten thousand Blockies and a thousand runs, that is ten million
+  comparisons per frame, and the same shape repeats for every derived projection.</p>
+
+  <table>
+    <thead><tr><th>Query</th><th>Naive</th><th>Index</th></tr></thead>
+    <tbody>
+      <tr><td>Occupancy of a Blockie</td><td>scan <code>runs</code></td><td><code>host → active run</code></td></tr>
+      <tr><td>Run count of a Composite</td><td>walk the membership tree per query</td><td>counter per Composite, invalidated on status change</td></tr>
+      <tr><td>Footprint</td><td>union over the subtree</td><td>AABB per node, propagated on placement change</td></tr>
+      <tr><td>Availability of a process output</td><td>scan runs for the host</td><td>same <code>host → active run</code> index</td></tr>
+      <tr><td>Attention</td><td>session scopes ∪ input bindings, per entity</td><td>bitset union, updated on session or run change</td></tr>
+      <tr><td>Aliases of a member</td><td>scan all aliases</td><td><code>member → alias</code></td></tr>
+      <tr><td>Connections of a Composite</td><td>scan all connections</td><td><code>composite → connection</code></td></tr>
+      <tr><td>Waiting runs for a port</td><td>scan all waiting runs</td><td><code>port → waiting runs</code></td></tr>
+      <tr><td>Children of a run</td><td>scan all runs</td><td><code>parent → children</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>These are secondary indexes in the database sense. Build them once at load, update them inside
+  the transaction that changes the source, roll them back with the undo journal, and never
+  serialise them. Each entry carries the generation that produced it, so a stale entry is
+  detectable rather than silently wrong.</p>
+
+  <div class="callout good">
+    <span class="label">The proof obligation</span>
+    <p>For every committed generation, <code>index(x) = derive(tables, x)</code>. If an index
+    disagrees with the registry, the index is wrong and must be rebuilt. A debug build should
+    assert this on every commit. The cache is allowed to be fast; it is not allowed to be a second
+    opinion.</p>
+  </div>
+
+  <h2 id="layout">Layout decides the constant factor</h2>
+  <p>Two entities with the same fields can cost very different amounts to iterate. The difference
+  is whether the fields you read are next to each other in memory.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  subgraph AOS["AoS: one record per entity"]
+    A1["id · type · state · status · x · y"]
+    A2["id · type · state · status · x · y"]
+    A3["id · type · state · status · x · y"]
+  end
+  subgraph SOA["SoA: one array per field"]
+    S1["ids: 1 2 3 …"]
+    S2["status: 1 1 0 …"]
+    S3["x: 10 20 30 …"]
+    S4["y: 5 6 7 …"]
+  end
+  </script></div>
+
+  <p>A frame that reads status for ten thousand entities touches ten thousand records in AoS and
+  one sixteenth of that in SoA. The difference is a cache miss per entity: roughly 100 ns × 10k =
+  1 ms, per pass, per view. That is a sixth of a 60 Hz frame budget spent on reading one field.</p>
+
+  <table>
+    <thead><tr><th>Representation</th><th>Cost per entity</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>JSON object with string keys</td><td>200–1000 B overhead</td><td>hash table, string keys, boxed values</td></tr>
+      <tr><td>AoS struct with string id and boxed value</td><td>100–400 B, 2–4 cache lines</td><td>iterating one field pulls the whole struct</td></tr>
+      <tr><td>SoA columns with integer handles</td><td>8–40 B per field, one line per 16–64 entities</td><td>linear scans vectorise</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Handles, not pointers</h3>
+  <p>Give every entity a dense integer index plus a generation counter. The index makes arrays
+  possible; the generation makes deletion detectable without reusing an identity (C-10). Keep one
+  canonical string table for the document and for traces. Internal code never hashes a string.</p>
+  <p>A handle is not an ID. It must never leak into the document, a digest, or a trace that is
+  compared across hosts. It is a cache address, not an identity.</p>
+
+  <h3>Edges as contiguous arrays</h3>
+  <p>Membership, connections and aliases are adjacency lists. Store them in compressed sparse row
+  form: one offsets array and one targets array. Iterating a Composite's members becomes a
+  contiguous scan instead of a chain of hash lookups. This is also what makes a fold over ten
+  thousand members vectorisable.</p>
+
+  <h3>Archetypes for Type dispatch</h3>
+  <p>Group entities by Type so a renderer or a compute kernel sees one contiguous block per Type.
+  This removes a branch or virtual call per entity and makes the kernel's input layout
+  predictable. It is the same idea as an entity-component-system archetype, without changing the
+  ontology: the Type is already the grouping key.</p>
+
+  <h2 id="identity">Identity is an index, not a string</h2>
+  <p>IDs are opaque, stable, unique and never reused (C-7–C-10). They are not required to be
+  random. A1 also has no ambient time or randomness, so random UUIDs were never legal: replay
+  would diverge.</p>
+  <p>A per-World monotonic counter gives deterministic, sortable IDs. Encode
+  <code>(world epoch, counter)</code> in a fixed-width big-endian value, so bytewise order equals
+  creation order. Deleted IDs are never reused because the counter only moves forward. The counter
+  is part of the document, or derived as the maximum existing value plus one at load.</p>
+  <p>Then intern: map every ID to its rank in creation order. P-29's "ascending Run ID, bytewise"
+  becomes an integer compare. Keep the string form for the document and for traces.</p>
+
+  <div class="callout">
+    <span class="label">Sort per arrival, not globally</span>
+    <p>P-29 orders runs that become ready <em>at the same point</em>. A global priority queue keyed
+    by string ID re-sorts everything and compares strings at every level. A FIFO of buckets, each
+    sorted by integer rank, satisfies the same rule in <code>O(k log k)</code> per bucket.</p>
+  </div>
+
+  <p>Port names repeat everywhere: every Blockie of a Type has the same ports. A global symbol
+  table with integer symbols turns port lookup into an array index, and makes subset checks
+  (P-3's <code>claims ⊆ claimable</code>) a few bitwise operations.</p>
+
+  <h2 id="geometry">Geometry is a tree with a cache</h2>
+  <p>Placement is hierarchical and local (C-17). Resolving a world transform is a walk to the
+  root: <code>O(D)</code> matrix compositions. Doing that per entity per frame is
+  <code>O(N × D)</code>. At ten thousand entities and depth ten, that is a hundred thousand matrix
+  multiplies per frame, plus a pointer chase for each parent.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  F["Frame<br/>world origin"] --> C1["Composite A<br/>translate 100,50"]
+  C1 --> B1["Blockie 1<br/>local 10,10"]
+  C1 --> C2["Composite B<br/>translate 20,0"]
+  C2 --> B2["Blockie 2<br/>local 5,5"]
+  C1 -. "change marks<br/>the subtree dirty" .-> C2
+  C2 -.-> B2
+  </script></div>
+
+  <p>Cache each world transform. A change marks the entity and its descendants dirty, and the
+  recompute walks parents before children. Unchanged subtrees cost nothing. The renderer then
+  reads flat world-space arrays: <code>x</code>, <code>y</code>, <code>scale</code>,
+  <code>layer</code>.</p>
+  <p>Footprints use the same trick. A placement change updates the entity's local AABB and
+  propagates the union to ancestors until the value stops changing. A footprint query is then
+  <code>O(1)</code>.</p>
+
+  <div class="callout good">
+    <span class="label">Why the spatial index is free</span>
+    <p>C-23 says randomising every coordinate must leave every execution trace unchanged. That
+    makes the spatial index a pure presentation cache: it can be approximate, rebuilt per frame,
+    LOD-specific, or GPU-resident, with no semantic risk. Most engines cannot say that.</p>
+  </div>
+
+  <h2 id="validation">Validation should scale with the change</h2>
+  <p>Validation is three passes: structural, cross-reference, invariant (C-48). Running all three
+  over the whole document on every commit is <code>O(W)</code> per transaction, which is
+  <code>O(T × W)</code> per session.</p>
+  <p>Run the full pass at load and on demand. At commit, validate the write set: the touched
+  entities, the invariants that involve them, and the cross-references that point at them. A debug
+  build can run both and compare.</p>
+  <p>Three quadratic traps need specific fixes:</p>
+  <ul>
+    <li><strong>Acyclicity per <code>add_member</code>.</strong> A fresh DFS is <code>O(V+E)</code>.
+    Adding <code>N</code> members one at a time is <code>O(N²)</code>. Maintain a dynamic
+    topological order; a cycle exists iff the target already precedes the source, which is
+    <code>O(1)</code> amortised.</li>
+    <li><strong>Template instantiation.</strong> The template was validated when it was published.
+    Instantiation needs to check the new edges, not re-prove the template. Allocate an ID block,
+    build the edges, run one cycle check over the new subgraph.</li>
+    <li><strong>State validation after every step.</strong> A generic JSON Schema validator runs at
+    1–10 MB/s. Compile each state type to a predicate or bytecode once per digest (P-6).</li>
+  </ul>
+
+  <h2>The A0 findings</h2>
+  <p>Twenty findings at the protocol and document level. These are the costs the shape of the
+  document imposes on everything above it.</p>
+
+  <table>
+    <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>PF-001</td><td>generation</td><td>Derived values recomputed by scanning their source tables</td><td>T1</td><td>A</td><td>Incremental view maintenance</td></tr>
+      <tr><td>PF-002</td><td>world</td><td>One document treated as one physical blob</td><td>T2</td><td>A</td><td>Chunked storage plus Merkle subtrees</td></tr>
+      <tr><td>PF-003</td><td>generation</td><td>Canonical encoding undefined, so digests rehash everything</td><td>T1</td><td>A</td><td>Canonical per-entity encoding, Merkle DAG</td></tr>
+      <tr><td>PF-004</td><td>transaction</td><td>Definition digests verified by re-hashing at every attach</td><td>T1</td><td>A</td><td>Content-addressed store, verify once</td></tr>
+      <tr><td>PF-005</td><td>transaction</td><td>Deep structural value equality at every gate</td><td>T1</td><td>A</td><td>Hash-consing, cached canonical hash</td></tr>
+      <tr><td>PF-006</td><td>entity</td><td>The schema's record shape is used as the runtime store</td><td>T1</td><td>I</td><td>Dense handles, interning, SoA</td></tr>
+      <tr><td>PF-007</td><td>transaction</td><td>Opaque string IDs hashed, compared and sorted</td><td>T1</td><td>I</td><td>Intern to integer handles</td></tr>
+      <tr><td>PF-008</td><td>frame</td><td>World transforms walk the placement ancestry</td><td>T2</td><td>A</td><td>Cached matrices, dirty subtrees</td></tr>
+      <tr><td>PF-009</td><td>frame</td><td>Footprint is a union over the whole subtree</td><td>T2</td><td>A</td><td>Incremental AABB propagation</td></tr>
+      <tr><td>PF-010</td><td>transaction</td><td>Alias chains resolve on every access</td><td>T2</td><td>A</td><td>Precomputed resolution table</td></tr>
+      <tr><td>PF-011</td><td>transaction</td><td>Folds revalidated on every membership change; reduction order unspecified</td><td>T2</td><td>A</td><td>Reverse index, delta revalidation, fixed reduction tree</td></tr>
+      <tr><td>PF-012</td><td>transaction</td><td>Reverse lookups are missing</td><td>T1</td><td>I</td><td>Maintained secondary indexes</td></tr>
+      <tr><td>PF-013</td><td>transaction</td><td>Acyclicity checked with a fresh DFS per operation</td><td>T2</td><td>A</td><td>Dynamic topological order</td></tr>
+      <tr><td>PF-014</td><td>world</td><td>All three validation passes run over the whole document</td><td>T2</td><td>A</td><td>Full at load, delta at commit</td></tr>
+      <tr><td>PF-015</td><td>world</td><td>Sparse tables force iteration over holes</td><td>T2</td><td>I</td><td>Dense index plus presence bitmap</td></tr>
+      <tr><td>PF-016</td><td>world</td><td>Schemas interpreted per check rather than compiled</td><td>T1</td><td>I</td><td>Compiled validator per digest</td></tr>
+      <tr><td>PF-017</td><td>transaction</td><td>Assignability recomputed for unchanged ports</td><td>T2</td><td>I</td><td>Cache the type relation</td></tr>
+      <tr><td>PF-018</td><td>frame</td><td>Views iterate unplaced and backstage entities</td><td>T2</td><td>I</td><td>Placement and stage bitsets</td></tr>
+      <tr><td>PF-019</td><td>world</td><td>Terminal runs retained forever and scanned</td><td>T2</td><td>A</td><td>Hot/cold partition of the registry</td></tr>
+      <tr><td>PF-020</td><td>transaction</td><td>Deterministic ID generation versus sortable, compact IDs</td><td>T1</td><td>A</td><td>Monotonic counter in a fixed-width ID</td></tr>
+    </tbody>
+  </table>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Why can a cache be correct when a stored value would not be?</summary>
+      <p>Because the cache has no independent authority. It is rebuilt from the tables, updated in
+      the same transaction, and can be discarded at any time. A stored value survives a restart and
+      can be edited by a second writer, which is what creates disagreement.</p>
+    </details>
+    <details>
+      <summary>What does a handle give you that a string ID does not?</summary>
+      <p>An array index. It makes columns and contiguous edge lists possible, so iteration is a
+      scan instead of a hash lookup. It is not an identity: the canonical string remains the ID,
+      and the generation counter prevents a deleted handle from being mistaken for a new entity.</p>
+    </details>
+    <details>
+      <summary>Why is the spatial index allowed to be approximate?</summary>
+      <p>Because geometry is semantically inert (C-23). Randomising every coordinate must leave
+      every execution trace unchanged, so a spatial index can only affect what is drawn or
+      clicked, never what a transaction does.</p>
+    </details>
+    <details>
+      <summary>Why does adding members one at a time become quadratic?</summary>
+      <p>Each add runs a cycle check over the whole containment graph. <code>N</code> adds of
+      <code>O(N)</code> each is <code>O(N²)</code>. A maintained topological order makes each
+      check constant amortised, and a bulk operation can prove acyclicity once.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="engine.html">← The engine loop</a>
+    <a href="scale.html">Next: scaling out →</a>
+  </div>
+</main>
+<script src="../assets/vendor/pele.global.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

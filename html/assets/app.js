@@ -17,6 +17,17 @@ const NAV = [
     ],
   },
   {
+    group: "Performance",
+    items: [
+      ["performance/index.html", "Why performance"],
+      ["performance/engine.html", "The engine loop"],
+      ["performance/data.html", "Data and indexes"],
+      ["performance/scale.html", "Scaling out"],
+      ["performance/experience.html", "Drawing and observing"],
+      ["performance/techniques.html", "Techniques and tradeoffs"],
+    ],
+  },
+  {
     group: "Reference",
     items: [
       ["decisions.html", "Decision log"],

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Performance · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Performance</p>
+  <h1 id="performance">Performance</h1>
+  <p class="lede">Most of the performance of this system is decided by the architecture, not by
+  tuning at the end. This section maps where the cost goes, layer by layer, and what removes it.</p>
+
+  <h2>The uncomfortable truth</h2>
+  <p>A naive implementation of this design is not slightly slow. It is slow in a way that gets
+  worse as the World grows, because several of the architecture's best properties are also
+  expensive if you take them literally.</p>
+  <p>Take one example. The specification says occupancy and status are <em>derived</em>, never
+  stored (C-14). Read that as "compute it when asked" and every status query scans the run table.
+  A frame that asks for the status of every Blockie is then <code>O(N × R)</code>: at ten thousand
+  Blockies and a thousand runs, ten million comparisons per frame, before anything is drawn.</p>
+  <p>The fix is not to store the value. It is to notice that <strong>derived does not mean
+  uncached</strong>. A transient index that is rebuilt at load, updated in the same transaction,
+  never serialised and never authoritative is not a stored derived value. It is a cache with a
+  proof obligation.</p>
+
+  <div class="callout">
+    <span class="label">The distinction this section keeps returning to</span>
+    <p>A <strong>stored</strong> derived value is a second source of truth. A <strong>cached</strong>
+    derived value is a function of the first truth, with a generation stamp. The first is
+    forbidden. The second is how the engine reaches its performance budget.</p>
+  </div>
+
+  <p>There are 120 findings in the reference document. Each one is tagged by layer, scope, the
+  scale at which it starts to hurt, and whether the cost is forced by a requirement or is just a
+  representation choice. That tagging is what makes the list usable: it tells you which costs you
+  can design away and which ones you have to amortise.</p>
+
+  <h2>The six hot paths</h2>
+  <p>Every finding lands on one of six paths. The transaction path is the one the architecture is
+  really about. The others are where a naive implementation loses the frame budget, the disk, or
+  the agent's context window.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  IN["input<br/>event or command"] --> ACC["accept"]
+  ACC --> VAL["validate"]
+  VAL --> STG["stage"]
+  STG --> EV["event phase<br/>reducers"]
+  EV --> PR["process phase<br/>bounded steps"]
+  PR --> VP["value phase<br/>stabilise"]
+  VP --> PREP["prepare"]
+  PREP --> COM["commit"]
+  COM --> PER["persist"]
+  COM --> PUB["publish"]
+  PUB --> VIEW["per-view filter"]
+  VIEW --> REN["render"]
+  COM --> EFF["effects"]
+  </script></div>
+
+  <table>
+    <thead><tr><th>Path</th><th>How often</th><th>What bounds it</th></tr></thead>
+    <tbody>
+      <tr><td>Ingest and transaction</td><td>per input, 10²–10⁴ per second</td><td>commit and validation</td></tr>
+      <tr><td>Step execution</td><td>per run per transaction</td><td>sandbox boundary and interpreter</td></tr>
+      <tr><td>Value stabilisation</td><td>per transaction</td><td>graph size and equality checks</td></tr>
+      <tr><td>Commit, persist, publish</td><td>per transaction</td><td>serialisation and <code>fsync</code></td></tr>
+      <tr><td>View filtering and render</td><td>per frame, 60 Hz</td><td><code>N × V</code> and draw calls</td></tr>
+      <tr><td>Agent observation</td><td>per agent turn</td><td>serialisation into context</td></tr>
+    </tbody>
+  </table>
+
+  <h2>A cost model you can argue with</h2>
+  <p>Numbers make the rest of the section checkable. They are order-of-magnitude figures for a
+  2020s laptop or phone, not targets. The point is the ratio between them: a cache miss is a
+  hundred times a register access, a syscall is a thousand times a hash lookup, and an
+  <code>fsync</code> is a thousand times a syscall.</p>
+
+  <table>
+    <thead><tr><th>Operation</th><th>Rough cost</th></tr></thead>
+    <tbody>
+      <tr><td>L1 / L2 / L3 / DRAM</td><td>1 ns / 4 ns / 20 ns / 80–120 ns</td></tr>
+      <tr><td>Branch mispredict</td><td>5–15 ns</td></tr>
+      <tr><td>Hash-map lookup, warm</td><td>20–50 ns</td></tr>
+      <tr><td>Pointer chase through an ID reference</td><td>80–150 ns</td></tr>
+      <tr><td>Linear scan of 10k entities</td><td>10–100 µs</td></tr>
+      <tr><td><code>fsync</code></td><td>0.1–10 ms</td></tr>
+      <tr><td>Syscall</td><td>0.5–2 µs</td></tr>
+      <tr><td>JS ↔ WASM call</td><td>0.1–1 µs</td></tr>
+      <tr><td>JSON parse</td><td>100–400 MB/s</td></tr>
+      <tr><td>Generic schema validation</td><td>1–10 MB/s</td></tr>
+      <tr><td>Draw call, CPU side</td><td>1–10 µs</td></tr>
+      <tr><td>Text shaping, per label</td><td>10–100 µs</td></tr>
+    </tbody>
+  </table>
+
+  <p>The symbols used throughout are <code>N</code> Blockies, <code>C</code> Composites,
+  <code>R</code> runs (including finished ones), <code>Rₐ</code> active runs, <code>G</code>
+  value-graph nodes, <code>V</code> views, <code>D</code> containment depth, and <code>W</code>
+  document bytes.</p>
+
+  <h2>Three regimes, three different problems</h2>
+  <p>The bottleneck changes with size, so the fix changes too. Optimising the small regime and
+  calling it done is how an engine hits a wall at ten thousand entities.</p>
+
+  <table>
+    <thead><tr><th>Regime</th><th>Shape</th><th>What dominates</th></tr></thead>
+    <tbody>
+      <tr><td>Small</td><td><code>N &lt; 10³</code>, <code>Rₐ &lt; 10²</code></td><td>transaction overhead, sandbox calls, <code>fsync</code></td></tr>
+      <tr><td>Medium</td><td><code>N ≈ 10⁴–10⁵</code>, <code>Rₐ ≈ 10³</code></td><td>indexing, incremental derivation, view filtering</td></tr>
+      <tr><td>Large</td><td><code>N ≥ 10⁶</code>, <code>Rₐ ≥ 10⁴</code></td><td>memory layout, chunked storage, LOD, streaming</td></tr>
+      <tr><td>Pathological</td><td><code>D &gt; 20</code>, long dependency chains</td><td>recursion, quadratic validation, hash collisions</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How to read a finding</h2>
+  <p>Every finding has the same shape, so you can decide in a few seconds whether it applies to
+  you.</p>
+
+  <div class="card">
+    <h3>PF-028 · Fixpoint stabilisation</h3>
+    <p><strong>Layer:</strong> A1 Core. <strong>Scope:</strong> per transaction.
+    <strong>Trigger:</strong> T1, visible at a thousand entities. <strong>Class:</strong>
+    architectural: the value phase is required, but the way it is evaluated is not.</p>
+    <p><strong>What happens:</strong> the stabiliser loops over every node until nothing changes.
+    On a chain of length <code>G</code>, that is <code>O(G²)</code> visits.</p>
+    <p><strong>Fix:</strong> precompute a topological order once per graph revision, then walk it
+    once with a dirty-closure worklist. Most transactions touch a handful of nodes.</p>
+  </div>
+
+  <p>The four tags mean:</p>
+  <table>
+    <thead><tr><th>Tag</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Layer</strong></td><td>A0 protocol, A1 core, A2 adapters, A3 host, A4 presentation, A5 clients, A6 operators, X cross-cutting</td></tr>
+      <tr><td><strong>Scope</strong></td><td>per entity, per transaction, per generation, per frame, per session, per World</td></tr>
+      <tr><td><strong>Trigger</strong></td><td>T1 at 10³ entities, T2 at 10⁴–10⁵, T3 at 10⁶, T4 only under pathological depth or long sessions</td></tr>
+      <tr><td><strong>Class</strong></td><td><strong>A</strong> architectural: the cost follows from a requirement, so amortise it. <strong>I</strong> implementation: avoidable by choosing a different representation.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="label">The rule that keeps this honest</span>
+    <p>A fix may not change an observable trace, and it may not move authority. Caching, batching,
+    indexing and parallelism may change <em>when</em> work happens, never <em>who</em> may do it.
+    If a technique changes the result of a transaction, it is a semantic amendment and belongs in
+    the decision log.</p>
+  </div>
+
+  <h2>The short list</h2>
+  <p>If you read nothing else, these are the twelve that decide whether the engine is usable.
+  The pages that follow explain each cluster.</p>
+
+  <table>
+    <thead><tr><th>#</th><th>Finding</th><th>Why it dominates</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><a href="engine.html#value">Value phase</a>: fixpoint, hashing, deep equality</td><td>runs on every transaction; a quadratic here is the whole engine</td></tr>
+      <tr><td>2</td><td><a href="engine.html#overhead">One transaction per input</a></td><td>fixed commit cost paid thousands of times for tiny payloads</td></tr>
+      <tr><td>3</td><td><a href="engine.html#latency">One step per run per transaction</a></td><td>latency grows with chain length, not with work</td></tr>
+      <tr><td>4</td><td><a href="engine.html#commit">Full publish and whole-document serialisation</a></td><td>commit becomes <code>O(W)</code>, so a session is quadratic</td></tr>
+      <tr><td>5</td><td><a href="data.html#derived">Derived values recomputed by scanning</a></td><td>every status query is <code>O(R)</code>; a frame is <code>O(N·R)</code></td></tr>
+      <tr><td>6</td><td><a href="data.html#layout">JSON-object store, AoS, pointer chasing</a></td><td>5–20× memory and cache cost on every iteration</td></tr>
+      <tr><td>7</td><td><a href="scale.html#sandbox">Interpreter, context per step, marshalling</a></td><td>the boundary costs 10–100× the work inside it</td></tr>
+      <tr><td>8</td><td><a href="experience.html#draw">Per-entity draw calls</a></td><td>10k entities is 10–100 ms of CPU before the GPU starts</td></tr>
+      <tr><td>9</td><td><a href="scale.html#views">Per-view filtering and LOD counts</a></td><td><code>V × N</code> repeated every frame</td></tr>
+      <tr><td>10</td><td><a href="scale.html#durability">Durable inbox and <code>fsync</code> per commit</a></td><td>0.1–10 ms per event caps throughput at 100–1000/s</td></tr>
+      <tr><td>11</td><td><a href="scale.html#durability">Terminal runs retained and scanned</a></td><td>the hot set is <code>Rₐ</code>, but every scan pays <code>R</code></td></tr>
+      <tr><td>12</td><td><a href="data.html#validation">Per-operation acyclicity and full validation</a></td><td>template instantiation becomes <code>O(N²)</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>What the architecture already gets right</h2>
+  <p>This is not a rescue plan. Several decisions are performance-positive and should not be
+  traded away for a benchmark.</p>
+  <div class="callout good">
+    <span class="label">Free wins already in the design</span>
+    <ul>
+      <li><strong>Declared graph, not runtime tracking.</strong> No per-read bookkeeping, no proxy
+      objects, no dependency discovery at run time (D-011).</li>
+      <li><strong>Views are filters, not copies.</strong> One World, many cameras, so memory does
+      not multiply by the number of screens (D-007).</li>
+      <li><strong>Geometry is inert.</strong> A spatial index can be approximate, rebuilt or
+      GPU-resident without touching a trace (C-23).</li>
+      <li><strong>Definitions are immutable and digest-pinned.</strong> Compiled modules,
+      validators and renderers are cacheable forever (C-36).</li>
+      <li><strong>Steps are bounded and never span a commit.</strong> Latency has a ceiling and
+      cancellation has a clean point (P-23).</li>
+      <li><strong>Absence is not null.</strong> Sparse tables stay sparse; there is no sentinel
+      value to scan past (C-13).</li>
+    </ul>
+  </div>
+
+  <h2>Where to go next</h2>
+  <table>
+    <thead><tr><th>Page</th><th>Answers</th></tr></thead>
+    <tbody>
+      <tr><td><a href="engine.html">The engine loop</a></td><td>What happens inside a transaction, and why the value phase and commit dominate?</td></tr>
+      <tr><td><a href="data.html">Data and indexes</a></td><td>Why the document shape is not the memory shape, and how derived values stay fast?</td></tr>
+      <tr><td><a href="scale.html">Scaling out</a></td><td>What the sandbox, views, disk and network cost?</td></tr>
+      <tr><td><a href="experience.html">Drawing and observing</a></td><td>What the renderer, client and agent each pay?</td></tr>
+      <tr><td><a href="techniques.html">Techniques and tradeoffs</a></td><td>Which technique fixes which finding, and which fixes would break the design?</td></tr>
+    </tbody>
+  </table>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Why is a cached derived value not a violation of C-14?</summary>
+      <p>C-14 forbids storing derived values <em>in the document</em>, because a stored value gets a
+      second writer and eventually disagrees with its source. A transient cache is rebuilt from the
+      source, updated in the same transaction, never serialised and never authoritative. It is a
+      function of the truth, not a copy of it.</p>
+    </details>
+    <details>
+      <summary>Why does one transaction per input hurt even when each input is tiny?</summary>
+      <p>Because the fixed cost of a transaction, especially <code>fsync</code> and publish, is
+      paid per transaction, not per byte. A keystroke that changes one value still pays a database
+      commit. Batching amortises the fixed cost without changing what a transaction means.</p>
+    </details>
+    <details>
+      <summary>What is the difference between an architectural finding and an implementation finding?</summary>
+      <p>An architectural finding is a cost forced by a requirement: you cannot remove it without
+      changing semantics, so you amortise it. An implementation finding is a representation choice:
+      the requirement is satisfied either way, and one way is simply faster.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="../index.html">← Overview</a>
+    <a href="engine.html">Next: the engine loop →</a>
+  </div>
+</main>
+<script src="../assets/vendor/pele.global.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

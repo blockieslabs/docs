@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drawing and observing · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / <a href="index.html">Performance</a> / Experience</p>
+  <h1 id="experience">Drawing and observing</h1>
+  <p class="lede">The last mile: what the renderer draws, what the client receives, and what the
+  agent reads. This is where a correct engine still feels slow.</p>
+
+  <h2 id="draw">Draw calls are the budget</h2>
+  <p>A frame has about 16.6 ms at 60 Hz. A draw call costs 1–10 µs of CPU before the GPU sees
+  anything. Ten thousand entities drawn one at a time is 10–100 ms of CPU, so the frame is already
+  gone before the first pixel is shaded.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  subgraph OLD["one draw per entity"]
+    E1["entity 1"] --> D1["draw call"]
+    E2["entity 2"] --> D2["draw call"]
+    E3["entity 3"] --> D3["draw call"]
+  end
+  subgraph NEW["instanced"]
+    B["batch by Type<br/>and material"] --> D4["one instanced draw"]
+    D4 --> G["GPU"]
+  end
+  </script></div>
+
+  <p>Instance by archetype. One instanced draw per Type, renderer and material. Instance data is a
+  SoA buffer: position, scale, colour, texture index. A Type with ten thousand instances is one
+  call. A texture atlas removes the bind changes between instances.</p>
+
+  <table>
+    <thead><tr><th>Cost</th><th>Per entity</th><th>At 10k</th></tr></thead>
+    <tbody>
+      <tr><td>Draw call or state change</td><td>1–10 µs</td><td>10–100 ms</td></tr>
+      <tr><td>Transform update</td><td>50–200 ns</td><td>0.5–2 ms</td></tr>
+      <tr><td>Text shaping and layout</td><td>10–100 µs</td><td>100–1000 ms</td></tr>
+    </tbody>
+  </table>
+
+  <p>Text is the worst of the three. A dashboard of ten thousand labels cannot shape text per
+  label per frame. Cache the layout keyed by string, style, size and device pixel ratio; use a
+  glyph atlas and SDF fonts so a scale change does not re-shape.</p>
+
+  <p>Transforms should be retained, not recomputed. A placement change marks a subtree dirty and
+  the transform pass walks parents before children. The renderer reads a flat world-space array.
+  The same dirty propagation gives footprints and LOD counts for free.</p>
+
+  <h3>Only draw what can be seen</h3>
+  <p>A viewport is a query, not a loop. Build a quadtree or BVH per generation, share it across
+  views, and let each view keep a visible bitset. Frustum culling removes what is offscreen;
+  occlusion culling removes what is behind something; LOD reduces what is far away. At the large
+  end, put the culling on the GPU with a compute shader and an indirect draw, so the CPU never
+  touches per-entity data.</p>
+
+  <p>Hit testing uses the same index. Only Blockies are hit-tested (S-40), so Composite chrome
+  never enters the candidate set. Broadphase by AABB, narrowphase by the Type's archetype. A
+  pointer move should not scan ten thousand entities.</p>
+
+  <div class="callout good">
+    <span class="label">On-demand frames</span>
+    <p>If nothing changed and no animation is running, do not draw. A committed generation is the
+    only thing that can start a frame, unless an animation is in flight. Busy-polling at 60 Hz
+    while the World is idle is pure waste, and on a laptop it is a battery complaint.</p>
+  </div>
+
+  <h2 id="clients">Clients are thin, but not free</h2>
+  <p>A client consumes committed generations and sends authorised commands. It should not
+  re-implement protocol semantics. But "thin" does not mean "no state": the client still has to
+  apply patches, keep an index, and show feedback before the round trip finishes.</p>
+  <ul>
+    <li><strong>Apply patches by handle.</strong> A client-side index mirroring the host's makes a
+    patch an array write, not a scan.</li>
+    <li><strong>Cold load from a binary snapshot.</strong> Parsing a large JSON document at startup
+    is a visible delay; a binary format with lazy sections starts drawing sooner.</li>
+    <li><strong>Predict input locally.</strong> Show the pressed state immediately, then reconcile
+    when the commit arrives. The prediction is presentation only; it never changes a value.</li>
+    <li><strong>Share decoded assets.</strong> Decode once per process, keyed by content digest,
+    not once per view.</li>
+  </ul>
+
+  <h2 id="agents">Agents read projections, not Worlds</h2>
+  <p>An agent is an operator: it issues authorised commands and events. It is also the most
+  expensive reader in the system, because everything it reads goes into a context window.</p>
+  <p>Serialising the whole World on every turn is the agent equivalent of drawing every entity at
+  60 Hz. It is also mostly irrelevant: the agent usually needs a scope, a few fields, and what
+  changed since last time.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  W["World<br/>10k entities"] --> P["projection<br/>scope + fields"]
+  P --> S["summary<br/>deltas since last turn"]
+  S --> A["agent context"]
+  A --> C["commands<br/>batched"]
+  C --> W
+  </script></div>
+
+  <p>Three rules make agent operation cheap:</p>
+  <ul>
+    <li><strong>Query with a scope.</strong> A viewport, a Composite, a run tree, a named set. The
+    same interest index that serves views serves agents.</li>
+    <li><strong>Project fields.</strong> Status and a label are enough for most decisions; the
+    state blob is not.</li>
+    <li><strong>Send diffs.</strong> "Since your last turn: these twelve entities changed" is
+    smaller and more useful than the current state of everything.</li>
+  </ul>
+
+  <p>Commands get the same treatment. An agent that issues one command per intent pays one
+  transaction per intent. A batch or patch API, with idempotency keys, turns a plan into one
+  round trip. And an LLM call is not a computation: model it as an effect plus an
+  <code>external_service</code> wait, so the run suspends instead of blocking a loop iteration.</p>
+
+  <h2 id="cross">Cross-cutting: the constant factors</h2>
+  <p>Some costs do not belong to a layer. They are properties of how the whole thing is built.</p>
+
+  <table>
+    <thead><tr><th>Finding</th><th>What it costs</th><th>Technique</th></tr></thead>
+    <tbody>
+      <tr><td>PF-111 AoS layout</td><td>iterating one field touches every field</td><td>SoA columns, hot/cold split, archetypes</td></tr>
+      <tr><td>PF-112 pointer chasing</td><td>one cache miss per graph edge</td><td>dense handles, CSR, BFS ordering</td></tr>
+      <tr><td>PF-113 branch mispredict</td><td>5–15 ns per entity on Type dispatch</td><td>sort by Type, jump tables, archetypes</td></tr>
+      <tr><td>PF-114 missed SIMD</td><td>4–16× left on the table in transforms, folds, culling</td><td>SIMD, SoA, alignment, branch-free loops</td></tr>
+      <tr><td>PF-115 weak hashing</td><td>collisions and slow content hashes</td><td>BLAKE3 or xxHash; 64-bit fingerprints</td></tr>
+      <tr><td>PF-116 no compression</td><td>storage and bandwidth multiply</td><td>zstd or lz4 with a dictionary</td></tr>
+      <tr><td>PF-117 no cache hierarchy</td><td>re-parsing and re-compiling per session</td><td>content-addressed caches keyed by digest</td></tr>
+      <tr><td>PF-118 GC pauses</td><td>frame and commit budgets break</td><td>arenas, pooling, allocation-free hot loops</td></tr>
+      <tr><td>PF-119 cold WASM</td><td>seconds at startup</td><td>precompiled artifacts, lazy instantiation</td></tr>
+      <tr><td>PF-120 observability</td><td>allocation per event, always on</td><td>sampling, ring buffers, compile out in release</td></tr>
+    </tbody>
+  </table>
+
+  <h2>The A4, A5, A6 and X findings</h2>
+  <p>The full reference. The prose above covers the clusters; these tables are for lookup.</p>
+
+  <h3>A4 — Presentation</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>PF-083</td><td>frame</td><td>One draw call per Blockie</td><td>T1</td><td>I</td><td>Instancing, batching, atlas, indirect draw</td></tr>
+      <tr><td>PF-084</td><td>frame</td><td>Scene traversed and transforms recomputed every frame</td><td>T1</td><td>A</td><td>Retained dirty flags, flat world-space arrays</td></tr>
+      <tr><td>PF-085</td><td>frame</td><td>Renderer dispatch per entity crosses a boundary</td><td>T2</td><td>A</td><td>Batch by renderer and archetype</td></tr>
+      <tr><td>PF-086</td><td>frame</td><td>Animation objects allocated per value change</td><td>T2</td><td>I</td><td>Retained slots, springs, pooling</td></tr>
+      <tr><td>PF-087</td><td>frame</td><td>One DOM node per Blockie</td><td>T2</td><td>I</td><td>Canvas or WebGL; virtualise; transform-only CSS</td></tr>
+      <tr><td>PF-088</td><td>frame</td><td>Text shaped and laid out per label per frame</td><td>T2</td><td>I</td><td>Glyph atlas, SDF, layout cache</td></tr>
+      <tr><td>PF-089</td><td>frame</td><td>LOD run counts recomputed per Composite per frame</td><td>T2</td><td>A</td><td>Cached counters, hierarchical aggregation</td></tr>
+      <tr><td>PF-090</td><td>input</td><td>Hit testing scans every Blockie</td><td>T2</td><td>I</td><td>Spatial index, BVH, GPU ID buffer</td></tr>
+      <tr><td>PF-091</td><td>frame</td><td>View culling recomputed over all entities per view</td><td>T2</td><td>A</td><td>Quadtree or BVH, cached visible sets</td></tr>
+      <tr><td>PF-092</td><td>frame</td><td>Composite chrome and bounds recomputed every frame</td><td>T2</td><td>I</td><td>Cached AABB with dirty propagation</td></tr>
+      <tr><td>PF-093</td><td>frame</td><td>Renderer resolution looked up per entity per frame</td><td>T2</td><td>I</td><td>Cache per Type, preload, fallback</td></tr>
+      <tr><td>PF-094</td><td>world</td><td>Large blobs inlined in the document</td><td>T2</td><td>A</td><td>Blob store, references, lazy decode</td></tr>
+      <tr><td>PF-095</td><td>frame</td><td>Renderer busy-polls while commits are sparse</td><td>T2</td><td>I</td><td>On-demand rendering, dirty frame flag</td></tr>
+      <tr><td>PF-096</td><td>frame</td><td>Layout thrash from interleaved DOM reads and writes</td><td>T2</td><td>I</td><td>Batch reads then writes; offscreen measurement</td></tr>
+      <tr><td>PF-097</td><td>frame</td><td>Overdraw exceeds the GPU budget on mobile</td><td>T3</td><td>I</td><td>Occlusion culling, scissor, resolution scaling</td></tr>
+      <tr><td>PF-098</td><td>frame</td><td>Offscreen entities keep animating</td><td>T2</td><td>I</td><td>Pause outside the viewport; cap by LOD</td></tr>
+    </tbody>
+  </table>
+
+  <h3>A5 — Clients</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>PF-099</td><td>frame</td><td>Clients re-derive state from deltas every frame</td><td>T2</td><td>I</td><td>Persistent client store, incremental patches</td></tr>
+      <tr><td>PF-100</td><td>world</td><td>Cold load parses a large JSON document</td><td>T2</td><td>I</td><td>Binary snapshot, streaming parser, compression</td></tr>
+      <tr><td>PF-101</td><td>world</td><td>Mobile memory cannot hold the document plus assets</td><td>T3</td><td>A</td><td>Streaming, LOD, eviction, resident-set cap</td></tr>
+      <tr><td>PF-102</td><td>input</td><td>Input waits for commit and publish before feedback</td><td>T1</td><td>A</td><td>Optimistic local prediction with rollback</td></tr>
+      <tr><td>PF-103</td><td>frame</td><td>Patch application is <code>O(N)</code> without an index</td><td>T2</td><td>I</td><td>Client-side index mirroring the host's</td></tr>
+      <tr><td>PF-104</td><td>world</td><td>Shared assets decoded once per view</td><td>T2</td><td>I</td><td>Shared decode cache keyed by digest</td></tr>
+    </tbody>
+  </table>
+
+  <h3>A6 — Operators</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>PF-105</td><td>command</td><td>Agents issue many small commands, each a transaction</td><td>T1</td><td>A</td><td>Batch or patch API, coalescing, rate limits</td></tr>
+      <tr><td>PF-106</td><td>session</td><td>Agent observation serialises the whole World</td><td>T1</td><td>A</td><td>Scoped queries, field projection, summaries</td></tr>
+      <tr><td>PF-107</td><td>world</td><td>Package resolution fetches definitions at load</td><td>T1</td><td>I</td><td>Local content-addressed cache, prefetch</td></tr>
+      <tr><td>PF-108</td><td>step</td><td>An LLM call blocks a run and a loop iteration</td><td>T1</td><td>A</td><td>Effect plus <code>external_service</code> wait; streaming</td></tr>
+      <tr><td>PF-109</td><td>session</td><td>Agent context grows with repeated full reads</td><td>T1</td><td>I</td><td>Diffs since last turn, token-aware summaries</td></tr>
+      <tr><td>PF-110</td><td>command</td><td>Every tool call is a round trip with its own transaction</td><td>T1</td><td>A</td><td>Multi-command tool calls, server-side composition</td></tr>
+    </tbody>
+  </table>
+
+  <h3>X — Cross-cutting</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>PF-111</td><td>entity</td><td>Entities are arrays of structs</td><td>T1</td><td>I</td><td>SoA, hot/cold split, archetypes</td></tr>
+      <tr><td>PF-112</td><td>entity</td><td>Graph edges are ID references plus hash lookup</td><td>T1</td><td>I</td><td>Dense indices, CSR, BFS ordering</td></tr>
+      <tr><td>PF-113</td><td>entity</td><td>Type dispatch is a branch per entity</td><td>T2</td><td>I</td><td>Sort by Type, jump tables, archetypes</td></tr>
+      <tr><td>PF-114</td><td>entity</td><td>Scalar loops miss vectorisation</td><td>T2</td><td>I</td><td>SIMD, SoA, alignment, branch-free loops</td></tr>
+      <tr><td>PF-115</td><td>world</td><td>Content and value hashing uses a weak hash</td><td>T2</td><td>I</td><td>BLAKE3 or xxHash; 64-bit fingerprints</td></tr>
+      <tr><td>PF-116</td><td>world</td><td>Storage and network payloads are uncompressed</td><td>T2</td><td>I</td><td>zstd or lz4 with a dictionary</td></tr>
+      <tr><td>PF-117</td><td>world</td><td>Definitions, modules and validators re-created per session</td><td>T1</td><td>I</td><td>Multi-level content-addressed cache</td></tr>
+      <tr><td>PF-118</td><td>world</td><td>GC pauses break frame and commit budgets</td><td>T2</td><td>I</td><td>Arenas, pooling, allocation-free hot loops</td></tr>
+      <tr><td>PF-119</td><td>world</td><td>WASM modules compiled and instantiated at cold start</td><td>T2</td><td>I</td><td>Precompiled artifacts, code cache, lazy instantiation</td></tr>
+      <tr><td>PF-120</td><td>world</td><td>Tracing and metrics allocate per event, always on</td><td>T2</td><td>I</td><td>Sampling, ring buffers, compile out in release</td></tr>
+    </tbody>
+  </table>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Why does instancing help even when the GPU is fast?</summary>
+      <p>Because the cost is on the CPU before the GPU sees anything: validating state, binding
+      resources, submitting work. Ten thousand submissions is milliseconds of CPU per frame,
+      regardless of how fast the shading is.</p>
+    </details>
+    <details>
+      <summary>Why is text the worst per-entity cost?</summary>
+      <p>Shaping and layout are tens to hundreds of microseconds per label, against nanoseconds for
+      a transform. Ten thousand labels cannot be laid out per frame; they have to be cached by
+      content and style.</p>
+    </details>
+    <details>
+      <summary>What should an agent read instead of the World?</summary>
+      <p>A scoped projection: the entities in its viewport or Composite, a few fields, and the
+      diff since its last turn. The same interest index that serves views can serve the agent.</p>
+    </details>
+    <details>
+      <summary>Why is an LLM call an effect rather than a computation?</summary>
+      <p>Because it is slow, external and uncertain. Modelling it as an effect plus an
+      <code>external_service</code> wait lets the run suspend without blocking the loop, and lets
+      the result arrive as an event in a later transaction.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="scale.html">← Scaling out</a>
+    <a href="techniques.html">Next: techniques and tradeoffs →</a>
+  </div>
+</main>
+<script src="../assets/vendor/pele.global.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

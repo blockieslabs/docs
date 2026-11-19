@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Techniques and tradeoffs · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / <a href="index.html">Performance</a> / Techniques</p>
+  <h1 id="techniques">Techniques and tradeoffs</h1>
+  <p class="lede">A reverse lookup: given a technique, what does it fix? And which "fixes" would
+  break the architecture?</p>
+
+  <h2>How to use this page</h2>
+  <p>Start from a symptom, not from a technique. "Status queries are slow" points at indexing.
+  "The frame is over budget" points at draw calls and text. "Commits take ten milliseconds" points
+  at <code>fsync</code> and serialisation. The tables below go the other way: each technique lists
+  the findings it addresses, so you can check whether a change is aimed at the right cost.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  S{"what is slow?"}
+  S -- "a query" --> Q["index it<br/>do not scan"]
+  S -- "a transaction" --> T["batch inputs<br/>cheapen the commit"]
+  S -- "a step" --> P["pool contexts<br/>batch the boundary"]
+  S -- "a commit" --> C["WAL, Merkle chunks<br/>delta publish"]
+  S -- "a frame" --> F["instancing, text cache<br/>culling, LOD"]
+  S -- "an agent turn" --> A["projection and diffs<br/>batch the commands"]
+  </script></div>
+
+  <div class="callout">
+    <span class="label">Two rules that outrank every technique</span>
+    <p>A fix may not change an observable trace, and it may not move authority. Caching, batching,
+    indexing and parallelism may change <em>when</em> work happens, never <em>who</em> may do it.
+    If a technique changes the result of a transaction, it is a semantic amendment and belongs in
+    the decision log.</p>
+  </div>
+
+  <h2 id="data-rep">Data representation</h2>
+  <table>
+    <thead><tr><th>Technique</th><th>What it does</th><th>Findings</th></tr></thead>
+    <tbody>
+      <tr><td>SoA instead of AoS</td><td>Columnar arrays; iterate one field without pulling the struct</td><td>PF-006, PF-111, PF-114</td></tr>
+      <tr><td>Dense generational handles</td><td><code>u32</code> index plus generation; no string hashing, safe deletion</td><td>PF-006, PF-007, PF-020, PF-050, PF-112</td></tr>
+      <tr><td>String interning</td><td>One canonical string, integer symbols everywhere</td><td>PF-007, PF-050, PF-111</td></tr>
+      <tr><td>CSR adjacency</td><td>Contiguous edge lists per node</td><td>PF-012, PF-112</td></tr>
+      <tr><td>ECS archetypes</td><td>Group by Type; contiguous, branch-free iteration</td><td>PF-085, PF-111, PF-113</td></tr>
+      <tr><td>Hot/cold splitting</td><td>Separate frequently read fields from blobs</td><td>PF-006, PF-111</td></tr>
+      <tr><td>Tagged unions and varints</td><td>Compact values, no boxing</td><td>PF-046, PF-048, PF-111</td></tr>
+      <tr><td>Arenas and bump allocators</td><td>Allocate per transaction, free in bulk</td><td>PF-048, PF-118</td></tr>
+      <tr><td>Object pools</td><td>Reuse contexts, buffers, animation slots</td><td>PF-048, PF-054, PF-086, PF-118</td></tr>
+      <tr><td>Persistent data structures</td><td>HAMT or RRB-tree; structural sharing across generations</td><td>PF-022, PF-038, PF-078</td></tr>
+      <tr><td>Copy-on-write pages</td><td>Snapshot without cloning</td><td>PF-022, PF-078</td></tr>
+      <tr><td>Memory-mapped files</td><td>Avoid load copies; the page cache does the work</td><td>PF-002, PF-071, PF-081</td></tr>
+      <tr><td>Presence bitmap and dense index</td><td>Iterate only occupied slots; absence stays absence</td><td>PF-015, PF-018</td></tr>
+      <tr><td>Delta overlay</td><td>Stage only changed fields; merge on commit</td><td>PF-023</td></tr>
+      <tr><td>Persistent immutable set</td><td>Share <code>memberSet</code> across designations and epochs</td><td>PF-043</td></tr>
+      <tr><td>Client-side index mirror</td><td>Apply patches by handle instead of scanning</td><td>PF-099, PF-103</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="algorithms">Algorithms and indexing</h2>
+  <table>
+    <thead><tr><th>Technique</th><th>What it does</th><th>Findings</th></tr></thead>
+    <tbody>
+      <tr><td>Incremental view maintenance</td><td>Materialise a projection, update on delta</td><td>PF-001, PF-012, PF-089</td></tr>
+      <tr><td>Secondary indexes</td><td><code>host→run</code>, <code>member→alias</code>, <code>port→waiters</code>, <code>parent→children</code></td><td>PF-001, PF-012, PF-035, PF-036, PF-051</td></tr>
+      <tr><td>Topological order</td><td>One pass instead of a fixpoint</td><td>PF-028</td></tr>
+      <tr><td>Dirty-closure worklist</td><td>Visit only affected nodes</td><td>PF-028, PF-091</td></tr>
+      <tr><td>Equality gating and early cutoff</td><td>Stop propagation when a value is unchanged</td><td>PF-030</td></tr>
+      <tr><td>Hash-consing</td><td>One canonical instance per value; pointer equality</td><td>PF-005, PF-030</td></tr>
+      <tr><td>Revision-counter memoisation</td><td>Avoid hashing inputs</td><td>PF-029</td></tr>
+      <tr><td>Path compression</td><td>Flatten alias chains</td><td>PF-010</td></tr>
+      <tr><td>Binary search or sorted arrays</td><td><code>O(log n)</code> membership</td><td>PF-042</td></tr>
+      <tr><td>Bitsets</td><td>Subset tests, visibility filters, capability sets</td><td>PF-017, PF-041, PF-067, PF-069, PF-091</td></tr>
+      <tr><td>Bloom filter</td><td>Cheap negative check before an exact set</td><td>PF-034</td></tr>
+      <tr><td>Dynamic topological order</td><td><code>O(1)</code> amortised cycle check</td><td>PF-013</td></tr>
+      <tr><td>Batch validation</td><td>One pass per bulk operation</td><td>PF-014, PF-047</td></tr>
+      <tr><td>Delta validation</td><td>Validate the write set, not the document</td><td>PF-014, PF-040</td></tr>
+      <tr><td>Timing wheel or heap</td><td><code>O(1)</code>–<code>O(log n)</code> timer lookup</td><td>PF-074</td></tr>
+      <tr><td>Ring buffer</td><td>Bounded trace and generation history</td><td>PF-044, PF-068</td></tr>
+      <tr><td>Delta fold revalidation</td><td>Recompute only folds whose selection changed</td><td>PF-011</td></tr>
+      <tr><td>Bucketed FIFO plus rank sort</td><td>Satisfy P-29 without a global sort</td><td>PF-025</td></tr>
+      <tr><td>Deterministic fuel counting</td><td>Budget at block boundaries, not per instruction</td><td>PF-027</td></tr>
+      <tr><td>Work stealing</td><td>Parallel Worlds, not parallel transactions</td><td>PF-045, PF-082</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="boundaries">Boundaries and batching</h2>
+  <table>
+    <thead><tr><th>Technique</th><th>What it does</th><th>Findings</th></tr></thead>
+    <tbody>
+      <tr><td>Transaction batching</td><td>Amortise the fixed commit cost</td><td>PF-021, PF-076, PF-105</td></tr>
+      <tr><td>Event coalescing</td><td>One commit for many deliveries</td><td>PF-021, PF-024</td></tr>
+      <tr><td>Group commit</td><td>One <code>fsync</code> per batch</td><td>PF-033, PF-070</td></tr>
+      <tr><td>Coarse sandbox call</td><td>One call per node or per batch, not per value</td><td>PF-031, PF-062</td></tr>
+      <tr><td>Graph fusion or megakernel</td><td>Compile a subgraph into one call</td><td>PF-031, PF-064</td></tr>
+      <tr><td>Shared-memory ABI</td><td>Offsets instead of copies</td><td>PF-032, PF-056, PF-062</td></tr>
+      <tr><td>Zero-copy views</td><td><code>&amp;[u8]</code> over a buffer, no copy</td><td>PF-032, PF-063, PF-077</td></tr>
+      <tr><td>Handle tables</td><td>Pass integers, not object graphs</td><td>PF-056, PF-062</td></tr>
+      <tr><td>Async outbox</td><td>Do not block the loop on I/O</td><td>PF-057, PF-108</td></tr>
+      <tr><td>Per-target ordered outbox</td><td>Batching without losing order</td><td>PF-065</td></tr>
+      <tr><td>Content-addressed cache</td><td>Key by digest; verify once</td><td>PF-004, PF-055, PF-107, PF-117, PF-119</td></tr>
+      <tr><td>Compile cache</td><td>Bytecode and WASM artifacts per digest</td><td>PF-053, PF-055, PF-119</td></tr>
+      <tr><td>Context pooling</td><td>Reuse isolates and realms</td><td>PF-054, PF-064</td></tr>
+      <tr><td>Backpressure</td><td>Bound queues; signal the producer</td><td>PF-073</td></tr>
+      <tr><td>Rate limiting</td><td>Protect the loop from agents</td><td>PF-076, PF-105</td></tr>
+      <tr><td>Turns</td><td>Multiple transactions, one publish</td><td>PF-026, PF-052</td></tr>
+      <tr><td>Bounded lookahead</td><td>Schedule a known consumer in the same turn</td><td>PF-052</td></tr>
+      <tr><td>Sample coalescing</td><td>One event per simulation region, not per entity</td><td>PF-059</td></tr>
+      <tr><td>Capability bitset at attach</td><td>One check per run, not per call</td><td>PF-061</td></tr>
+      <tr><td>Optimistic prediction</td><td>Show input feedback before commit</td><td>PF-102</td></tr>
+      <tr><td>Field projection</td><td>Return only what the caller asked for</td><td>PF-106</td></tr>
+      <tr><td>Diff-based observation</td><td>Send changes since the last turn</td><td>PF-109</td></tr>
+      <tr><td>Multi-command tool calls</td><td>One round trip for a batch of intents</td><td>PF-110</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="storage">Storage and network</h2>
+  <table>
+    <thead><tr><th>Technique</th><th>What it does</th><th>Findings</th></tr></thead>
+    <tbody>
+      <tr><td>WAL plus checkpoint</td><td>Durability without whole-document writes</td><td>PF-033, PF-070, PF-071</td></tr>
+      <tr><td>Log-structured storage</td><td>Append-only with compaction</td><td>PF-039, PF-071</td></tr>
+      <tr><td>Merkle DAG and chunking</td><td>Hash and sync only what changed</td><td>PF-002, PF-003, PF-039, PF-072</td></tr>
+      <tr><td>Delta encoding</td><td>Send the difference, not the state</td><td>PF-038, PF-072, PF-080</td></tr>
+      <tr><td>Keyframes</td><td>Periodic full snapshots for catch-up</td><td>PF-068, PF-080</td></tr>
+      <tr><td>zstd or lz4 with a dictionary</td><td>Compress repetitive records</td><td>PF-116, PF-094</td></tr>
+      <tr><td>Binary snapshot format</td><td>Skip JSON parsing on cold start</td><td>PF-081, PF-100</td></tr>
+      <tr><td>Streaming parser</td><td>Start work before the whole file arrives</td><td>PF-081, PF-100</td></tr>
+      <tr><td>Blob store with references</td><td>Keep large bytes out of the document</td><td>PF-063, PF-094</td></tr>
+      <tr><td>Texture compression</td><td>GPU-native asset format</td><td>PF-094, PF-101</td></tr>
+      <tr><td>Per-entity version vectors</td><td>Conflict detection and delta sync</td><td>PF-072</td></tr>
+      <tr><td>Interest-based replication</td><td>Send only what a view can see</td><td>PF-079, PF-101</td></tr>
+      <tr><td>Hot/cold partitioning</td><td>Keep terminal runs out of the scanned table</td><td>PF-019</td></tr>
+      <tr><td>Snapshot plus WAL replay</td><td>Start serving before everything is loaded</td><td>PF-037, PF-081</td></tr>
+      <tr><td>TTL and compaction</td><td>Bound dedup, effect and trace stores</td><td>PF-034, PF-044, PF-058, PF-120</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="rendering">Rendering</h2>
+  <table>
+    <thead><tr><th>Technique</th><th>What it does</th><th>Findings</th></tr></thead>
+    <tbody>
+      <tr><td>Instancing</td><td>One draw call for many copies</td><td>PF-083, PF-085</td></tr>
+      <tr><td>Batching by material or Type</td><td>Fewer state changes</td><td>PF-083, PF-085</td></tr>
+      <tr><td>Indirect draw</td><td>The GPU decides what to draw</td><td>PF-083, PF-091</td></tr>
+      <tr><td>Texture atlas</td><td>One bind for many sprites</td><td>PF-083, PF-094</td></tr>
+      <tr><td>SDF fonts and glyph atlas</td><td>Cheap text at any scale</td><td>PF-088</td></tr>
+      <tr><td>Text layout cache</td><td>Key by string and style</td><td>PF-088</td></tr>
+      <tr><td>Retained-mode dirty flags</td><td>Recompute only what changed</td><td>PF-084, PF-092</td></tr>
+      <tr><td>BVH, quadtree or grid</td><td><code>O(log n)</code> spatial queries</td><td>PF-090, PF-091, PF-060</td></tr>
+      <tr><td>Frustum and occlusion culling</td><td>Do not submit invisible work</td><td>PF-091, PF-097</td></tr>
+      <tr><td>Level of detail</td><td>Fewer details at distance</td><td>PF-089, PF-098, PF-101</td></tr>
+      <tr><td>On-demand rendering</td><td>No frame if nothing changed</td><td>PF-095, PF-098</td></tr>
+      <tr><td>GPU compute or WebGPU</td><td>Move culling, physics and particles off the CPU</td><td>PF-060, PF-091, PF-114</td></tr>
+      <tr><td>Canvas or WebGL instead of DOM</td><td>Avoid layout and paint per entity</td><td>PF-087, PF-096</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="concurrency">Concurrency and CPU</h2>
+  <table>
+    <thead><tr><th>Technique</th><th>What it does</th><th>Findings</th></tr></thead>
+    <tbody>
+      <tr><td>SIMD (AVX2, NEON, WASM SIMD)</td><td>4–16 lanes per instruction</td><td>PF-008, PF-009, PF-060, PF-114</td></tr>
+      <tr><td>Branch-free loops</td><td>Avoid mispredicts in hot scans</td><td>PF-113, PF-114</td></tr>
+      <tr><td>Level-parallel evaluation</td><td>Deterministic parallelism across a topological level</td><td>PF-045</td></tr>
+      <tr><td>Data parallelism inside a node</td><td>SIMD, not task threads</td><td>PF-045, PF-114</td></tr>
+      <tr><td>Parallel Worlds</td><td>Independent Worlds on separate threads</td><td>PF-066, PF-082</td></tr>
+      <tr><td>MVCC and epoch reclamation</td><td>Readers do not block writers</td><td>PF-078</td></tr>
+      <tr><td>FxHash or AHash</td><td>Fast hashing for non-adversarial keys</td><td>PF-049</td></tr>
+      <tr><td>BLAKE3 or xxHash</td><td>Fast content and value hashing</td><td>PF-005, PF-115</td></tr>
+      <tr><td>Profile-guided layout</td><td>Put hot fields together</td><td>PF-111, PF-113</td></tr>
+      <tr><td>Wake coalescing</td><td>Wake a run only when it reaches the front of its queue</td><td>PF-075</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="caching">Caches</h2>
+  <p>Every cache below is transient. None is serialised. None is authoritative. Each is rebuilt at
+  load or on demand, and each carries the generation or revision that produced it, so a stale
+  entry is detectable rather than silently wrong.</p>
+
+  <table>
+    <thead><tr><th>Cache</th><th>Key</th><th>Invalidated by</th><th>Findings</th></tr></thead>
+    <tbody>
+      <tr><td>Compiled validator</td><td>Type digest</td><td>never (immutable)</td><td>PF-016, PF-040</td></tr>
+      <tr><td>Compiled module</td><td>Definition digest</td><td>never</td><td>PF-055, PF-119</td></tr>
+      <tr><td>Context pool</td><td>Definition digest</td><td>session end</td><td>PF-054, PF-064</td></tr>
+      <tr><td>Resolved alias table</td><td>Composite id and generation</td><td>membership or alias change</td><td>PF-010</td></tr>
+      <tr><td>World transform</td><td>Entity handle and placement revision</td><td>placement change</td><td>PF-008</td></tr>
+      <tr><td>Footprint AABB</td><td>Composite id and placement revision</td><td>member placement change</td><td>PF-009, PF-092</td></tr>
+      <tr><td>Status projection</td><td>Run table generation</td><td>run status change</td><td>PF-001, PF-089</td></tr>
+      <tr><td>Visible set</td><td>View id and generation</td><td>viewport or World change</td><td>PF-067, PF-091</td></tr>
+      <tr><td>Capability bitset</td><td>Principal, scope and policy revision</td><td>policy or membership change</td><td>PF-069</td></tr>
+      <tr><td>Text layout</td><td>String, style and size</td><td>style change</td><td>PF-088</td></tr>
+      <tr><td>Renderer resolution</td><td>Type digest</td><td>never</td><td>PF-093</td></tr>
+      <tr><td>Blob</td><td>Content digest</td><td>never</td><td>PF-063, PF-094</td></tr>
+      <tr><td>Decoded asset</td><td>Content digest</td><td>never</td><td>PF-104</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="anti">Anti-fixes</h2>
+  <p>These would improve a benchmark and break the architecture. They are listed so they get
+  rejected deliberately rather than rediscovered under deadline pressure.</p>
+
+  <table>
+    <thead><tr><th>Anti-fix</th><th>Why it looks good</th><th>What it breaks</th></tr></thead>
+    <tbody>
+      <tr><td>Store occupancy or status on the Blockie</td><td>constant-time reads</td><td>C-12, C-14: two writers, eventual disagreement</td></tr>
+      <tr><td>Add a "fast" entity kind or process tier</td><td>cheaper execution</td><td>D-011: forks semantics; the tier becomes a second architecture</td></tr>
+      <tr><td>Copy the World per view</td><td>simple filtering</td><td>D-007: views are cameras; geometry and group move fork per view</td></tr>
+      <tr><td>Runtime dependency tracking</td><td>fine-grained updates without declarations</td><td>D-011: loses serialisability, cross-boundary cost, static validation</td></tr>
+      <tr><td>Native plugins for hot paths</td><td>maximum speed</td><td>D-027: breaks sandbox, portability and WASM at once</td></tr>
+      <tr><td>Multi-thread A1 without a deterministic merge</td><td>uses all cores</td><td>determinism: digests diverge across machines</td></tr>
+      <tr><td>Skip validation in release builds</td><td>fast commits</td><td>C-49, C-51, P-6: corrupt Worlds load, contract violations commit</td></tr>
+      <tr><td>Cache derived values in the document</td><td>fast load</td><td>C-14: the cache becomes a second truth</td></tr>
+      <tr><td>Let the renderer filter for security</td><td>saves host work</td><td>C-57: a renderer is never an enforcement point</td></tr>
+      <tr><td>Weaken equality to identity only</td><td>cheap propagation</td><td>D-020: structurally equal values stop propagating</td></tr>
+      <tr><td>Use wall-clock time for ordering</td><td>simple</td><td>A1 determinism: replay diverges</td></tr>
+      <tr><td>Unbounded queues "to avoid dropping"</td><td>no lost work</td><td>PF-073: memory grows until the host dies; backpressure is the answer</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="measure">Measurement</h2>
+  <p>Before optimising, make the costs visible. Each layer needs one number that is cheap to
+  collect and hard to fake.</p>
+
+  <table>
+    <thead><tr><th>Layer</th><th>Metric</th><th>Budget shape</th></tr></thead>
+    <tbody>
+      <tr><td>A1</td><td>p50 and p99 transaction time, split by phase</td><td>commit under 10% of the transaction</td></tr>
+      <tr><td>A1</td><td>value-phase nodes visited per transaction</td><td>dirty closure, not <code>G</code></td></tr>
+      <tr><td>A1</td><td>bytes serialised per commit</td><td>proportional to the write set, not <code>W</code></td></tr>
+      <tr><td>A1</td><td><code>fsync</code> count per second</td><td>one per batch, not per event</td></tr>
+      <tr><td>A2</td><td>sandbox calls per transaction</td><td>one per batch, not per value</td></tr>
+      <tr><td>A2</td><td>boundary bytes per step</td><td>bounded by the step contract</td></tr>
+      <tr><td>A3</td><td>publish bytes per view per generation</td><td>delta, not full state</td></tr>
+      <tr><td>A3</td><td>view lag in generations</td><td>bounded; <code>catching_up</code> visible</td></tr>
+      <tr><td>A4</td><td>draw calls per frame</td><td>one per archetype, not per entity</td></tr>
+      <tr><td>A4</td><td>frame time p99 at target <code>N</code></td><td>16.6 ms at 60 Hz</td></tr>
+      <tr><td>A5</td><td>time to first frame</td><td>snapshot plus delta, not full parse</td></tr>
+      <tr><td>A6</td><td>tokens per observation</td><td>projection, not the World</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Three benchmarks</h3>
+  <p>They stress different costs. A change that improves one and regresses another is not a win
+  until the trade is stated.</p>
+  <table>
+    <thead><tr><th>Benchmark</th><th>Shape</th><th>Measures</th></tr></thead>
+    <tbody>
+      <tr><td>Wide</td><td>100k Blockies, 10k runs, 1k Composites, sparse changes</td><td>layout, indexing, view filtering</td></tr>
+      <tr><td>Deep</td><td>1k nested Composites, alias chains of depth 20, folds at every level</td><td>recursion, alias resolution, footprint propagation</td></tr>
+      <tr><td>Chatty</td><td>10k small inputs per second, each touching one entity</td><td>transaction overhead, batching, <code>fsync</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="open">Open decisions</h2>
+  <p>These need a decision record, not an implementation choice. Each one changes what "fast"
+  means, so an engine should not guess.</p>
+  <ol>
+    <li><strong>Derived caches are not stored state.</strong> Clarify C-14: a transient, rebuilt,
+    non-authoritative index is permitted. Without this, implementers choose between a violation and
+    a scan.</li>
+    <li><strong>Canonical encoding.</strong> Key order, number form, decimal form, and whether the
+    digest is over entities or chunks. Needed for reproducible definitions, Merkle sync and
+    reproducible builds.</li>
+    <li><strong>Fold reduction order.</strong> <code>sum</code> over floats is order-sensitive.
+    Decide member-ID order, a fixed tree, or exact arithmetic. This is a semantic decision, not an
+    optimisation.</li>
+    <li><strong>Steps per transaction.</strong> P-24 says one. Decide whether a bounded
+    <code>K</code> is allowed, and whether a turn is the supported latency mechanism.</li>
+    <li><strong>Run archiving.</strong> Decide whether terminal runs move to a cold partition in
+    the document, and how acknowledgement and C-9 survive the move.</li>
+    <li><strong>Parallelism policy.</strong> Decide whether A1 may evaluate topological levels in
+    parallel, and what the deterministic merge rule is. Data parallelism inside a node is
+    uncontroversial; task parallelism is not.</li>
+    <li><strong>View interest model.</strong> Decide whether interest is viewport-derived,
+    grant-derived, or declared. This determines whether PF-079 is a cache or a protocol
+    feature.</li>
+  </ol>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>You have a slow status query. Do you reach for SIMD or for an index?</summary>
+      <p>An index. SIMD makes a scan faster by a constant factor; an index removes the scan. Reach
+      for SIMD when the algorithm is already right and the loop is the bottleneck.</p>
+    </details>
+    <details>
+      <summary>You want to parallelise the value phase. What must you decide first?</summary>
+      <p>The merge rule and the reduction order. If two orders produce different values, the
+      digest diverges. Data parallelism inside a node is safe; task parallelism across nodes needs
+      a deterministic merge.</p>
+    </details>
+    <details>
+      <summary>Why is "cache the status in the document" not the same as "cache the status in memory"?</summary>
+      <p>The document survives restarts and can be edited by another writer, so the cache becomes a
+      second source of truth. In-memory state is rebuilt from the tables and can be discarded at any
+      time, so it remains a function of the truth.</p>
+    </details>
+    <details>
+      <summary>What is the first metric to instrument?</summary>
+      <p>Transaction time split by phase. It tells you whether you are paying for commit,
+      stabilisation, or the sandbox, which determines which page of this section applies.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="experience.html">← Drawing and observing</a>
+    <a href="index.html">Back to the overview →</a>
+  </div>
+</main>
+<script src="../assets/vendor/pele.global.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>
