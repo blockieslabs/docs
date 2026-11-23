@@ -11,11 +11,18 @@
 <div id="nav"></div>
 <main>
   <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
-  <h1>Space and appearance</h1>
+  <h1 id="space">Space and appearance</h1>
   <p class="lede">Blockies is a visual medium, so position matters to what you see. It matters to
   nothing else.</p>
 
-  <h2>World, Frame, placement</h2>
+  <div class="callout">
+    <span class="label">Running example</span>
+    <p>In the <a href="example.html">dashboard</a>, the Composite sits at <code>(100, 50)</code> and
+    each member has a local coordinate inside it. Moving the dashboard moves every member on screen
+    without changing a single member coordinate.</p>
+  </div>
+
+  <h2 id="frame">World, Frame, placement</h2>
   <p>A World has exactly one <strong>Frame</strong>. The Frame is the root
   <a class="term" href="../glossary.html#coordinate-scope">coordinate scope</a>: everything
   ultimately resolves to a position inside it.</p>
@@ -25,16 +32,37 @@
 
   <div class="mermaid"><script type="text/plain">
 flowchart TB
-  F["Frame<br/>root scope"] --> C["Composite C<br/>has its own transform"]
-  C --> B1["member<br/>local coordinates"]
-  C --> B2["member<br/>local coordinates"]
+  F["Frame<br/>root scope"] --> C["Composite: dashboard<br/>translate 100, 50"]
+  C --> B1["counter 1<br/>local 20, 10"]
+  C --> B2["counter 2<br/>local 20, 90"]
+  C --> G["gauge<br/>local 240, 10"]
   F --> B3["standalone Blockie<br/>frame coordinates"]
-  B2 -. "no placement record" .-> X["unplaced: exists,<br/>not drawn, still countable"]
   </script></div>
 
-  <h2>The transform</h2>
+  <p>The analogy is a room number inside a building. Room 204 is on the second floor of a
+  particular building. If the building is moved to another street, room 204 is still room 204; only
+  its world position changes. That is why a Composite's transform is the only thing that changes
+  when the group moves.</p>
+
+  <h2 id="transform">The transform</h2>
   <p>A placement is a translation plus a <strong>uniform</strong> scale. No rotation, and no
   non-uniform scale.</p>
+
+  <p>A concrete composition:</p>
+
+  <table>
+    <thead><tr><th>Entity</th><th>Local placement</th><th>World position</th></tr></thead>
+    <tbody>
+      <tr><td>dashboard</td><td>translate (100, 50), scale 1</td><td>(100, 50)</td></tr>
+      <tr><td>counter 1</td><td>translate (20, 10), scale 1</td><td>(120, 60)</td></tr>
+      <tr><td>gauge</td><td>translate (240, 10), scale 1</td><td>(340, 60)</td></tr>
+    </tbody>
+  </table>
+
+  <p>Move the dashboard to <code>(300, 200)</code> and counter 1 moves to <code>(320, 210)</code>
+  without its own placement changing. Scale the dashboard by 2 and counter 1's world position becomes
+  <code>(100 + 2×20, 50 + 2×10) = (140, 70)</code>; its size doubles too.</p>
+
   <div class="callout">
     <span class="label">Why no rotation</span>
     <p>Rotation composed with non-uniform scale is not closed: rotating a stretched object and then
@@ -42,9 +70,34 @@ flowchart TB
     than have reparenting silently deform things, rotation is simply not in the model yet.</p>
   </div>
 
-  <h2>Unplaced is a state, not a null</h2>
+  <h2 id="placement-vs-membership">Placement is not membership</h2>
+  <p>Three separate facts, again:</p>
+  <table>
+    <thead><tr><th>Fact</th><th>Question</th><th>Dashboard example</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Membership</strong></td><td>Which Composite directly contains it?</td><td>counter 1 is a member of dashboard</td></tr>
+      <tr><td><strong>Placement</strong></td><td>Where is it, relative to its scope?</td><td>counter 1 is at (20, 10) inside dashboard</td></tr>
+      <tr><td><strong>Nesting</strong></td><td>Which Composite contains another?</td><td>a "sales" Composite inside dashboard</td></tr>
+    </tbody>
+  </table>
+  <p>Two Blockies can overlap on screen and be in different Composites. A member can be placed on the
+  other side of the Frame. Dragging two Blockies together does not group them, and putting a
+  Blockie next to a group does not make it the manager.</p>
+
+  <h2 id="unplaced">Placed, unplaced, backstage</h2>
   <p>An entity may have <em>no</em> placement record. That is different from a placement whose
   value is null — the protocol keeps absent and null distinct everywhere.</p>
+
+  <table>
+    <thead><tr><th>State</th><th>Placement record?</th><th>Drawn?</th><th>Hit-tested?</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Placed</strong></td><td>yes</td><td>yes, if its scope is placed</td><td>yes</td><td>normal case</td></tr>
+      <tr><td><strong>Unplaced</strong></td><td>no</td><td>no</td><td>no</td><td>exists, but has no coordinate yet</td></tr>
+      <tr><td><strong>Backstage</strong></td><td>yes, in a non-framed region</td><td>no</td><td>no</td><td>background workers without carpeting the Frame</td></tr>
+      <tr><td><strong>Aggregated</strong></td><td>yes</td><td>as the ancestor's indicator</td><td>through the ancestor</td><td>derived per view by LOD</td></tr>
+    </tbody>
+  </table>
+
   <p>Unplaced means: no coordinate, not drawn, not clickable, contributes nothing to any footprint.
   It still exists, it is still a member if it belongs to something, and it can still be counted and
   promoted.</p>
@@ -56,20 +109,23 @@ flowchart TB
     its scope first.</p>
   </div>
 
-  <h2>Draw order</h2>
+  <h2 id="draw-order">Draw order</h2>
   <ul>
     <li>A Composite's body and chrome draw <em>beneath</em> its members.</li>
     <li>Among members of one scope, order is the placement's <code>layer</code>, then the entity id.</li>
   </ul>
   <p>Layer is presentation data. It never affects behaviour.</p>
 
-  <h2>Footprint</h2>
+  <h2 id="footprint">Footprint</h2>
   <p>A Composite's <a class="term" href="../glossary.html#footprint">footprint</a> is
   <strong>derived</strong> from where its members actually are. It is not stored, and it does not
   decide membership. A Composite can be spatially disconnected, with gaps, and that means
   nothing.</p>
 
-  <h2>The rule that keeps it honest</h2>
+  <p>The dashboard's footprint is the union of the button, the counters, and the gauge. Move the
+  gauge far away and the footprint grows; the membership list does not change.</p>
+
+  <h2 id="inert">The rule that keeps it honest</h2>
   <div class="callout good">
     <span class="label">Geometry is semantically inert</span>
     <p>Placement may change what you see. It may never change what happens. Randomising every
@@ -79,15 +135,15 @@ flowchart TB
   next to a group" does not make it a manager, and reordering members in space does not reorder
   behaviour.</p>
 
-  <h2>What draws a Composite?</h2>
-  <p>A Blockie's appearance comes from its Type. A Composite has no Type, so it carries an optional
+  <h2 id="appearance">What draws a Composite?</h2>
+  <p>A Blockie's appearance comes from its Blueprint. A Composite has no Blueprint, so it carries an optional
   presentation record instead:</p>
   <table>
-    <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+    <thead><tr><th>Field</th><th>Meaning</th><th>Dashboard example</th></tr></thead>
     <tbody>
-      <tr><td><code>label</code></td><td>A human name, shown in chrome and inspectors.</td></tr>
-      <tr><td><code>renderer</code></td><td>A <em>renderer package</em> — drawing only, not a Type.</td></tr>
-      <tr><td><code>body</code></td><td>An optional member that visually stands for the assembly.</td></tr>
+      <tr><td><code>label</code></td><td>A human name, shown in chrome and inspectors.</td><td>"Sales dashboard"</td></tr>
+      <tr><td><code>renderer</code></td><td>A <em>renderer package</em> — drawing only, not a Blueprint.</td><td>the default bounds renderer</td></tr>
+      <tr><td><code>body</code></td><td>An optional member that visually stands for the assembly.</td><td>the gauge</td></tr>
     </tbody>
   </table>
   <p>With no presentation record, the session's default composite renderer draws bounds and the id.
@@ -103,23 +159,26 @@ flowchart TB
     the renderer package.</li>
   </ul>
 
-  <h2>Views are cameras</h2>
+  <h2 id="views">Views are cameras</h2>
   <p>There is one World and one placement tree. A view is a camera framing a region, plus a
   renderer, plus a grant scope. Views do not copy entities and do not reflow the layout.</p>
   <p>That is why a presenter screen and an audience phone can show different parts of the same
-  World without duplicating anything.</p>
+  World without duplicating anything. The presenter's camera can include the button; the audience's
+  can frame the gauge.</p>
 
-  <div class="card">
-    <h3>Terms on this page</h3>
-    <ul class="small">
-      <li><strong>Frame</strong> — the root coordinate scope.</li>
-      <li><strong>Coordinate scope</strong> — the thing a position is relative to.</li>
-      <li><strong>Transform</strong> — translation plus uniform scale.</li>
-      <li><strong>Footprint</strong> — the derived bounds of an assembly.</li>
-      <li><strong>Chrome</strong> — decorative bounds, label, and affordances around an assembly.</li>
-      <li><strong>Renderer package</strong> — a drawing-only plugin, not a Type.</li>
-    </ul>
-  </div>
+  <h2 id="mistakes">Common mistakes</h2>
+  <ol>
+    <li><strong>Inferring membership from position.</strong> Overlap is not containment. Membership
+    is an explicit edge.</li>
+    <li><strong>Reparenting without preserving the world transform.</strong> C-22 requires the
+    entity to stay where it appears; the local placement must be rewritten.</li>
+    <li><strong>Treating unplaced as null.</strong> Absence is a distinct state: the entity exists
+    and can be promoted, but it has no coordinate.</li>
+    <li><strong>Drawing members of an unplaced Composite.</strong> No origin means no world
+    position; the whole subtree is not drawn.</li>
+    <li><strong>Adding rotation or non-uniform scale to 0.1.</strong> The transform is closed only
+    for translation plus uniform scale.</li>
+  </ol>
 
   <section class="check">
     <h2>Check yourself</h2>
@@ -138,10 +197,21 @@ flowchart TB
       <p>Because the surface has no owner and no ports. Interaction must resolve to a Blockie's port
       or to a Composite alias that points at one.</p>
     </details>
+    <details>
+      <summary>Two Blockies overlap on screen. Are they members of the same Composite?</summary>
+      <p>Not necessarily. Membership is an explicit edge; position never implies it. They can
+      overlap and belong to different Composites, or to none.</p>
+    </details>
+    <details>
+      <summary>What does "geometry is semantically inert" forbid?</summary>
+      <p>Any behaviour that depends on coordinates: inferring membership from proximity, ordering
+      execution by position, or using placement to decide authority. Randomising every coordinate
+      must leave the trace unchanged.</p>
+    </details>
   </section>
 
   <div class="next">
-    <a href="types.html">← Types, state and ports</a>
+    <a href="types.html">← Blueprints, state and ports</a>
     <a href="composites.html">Next: composites →</a>
   </div>
 </main>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Types, state and ports · Blockies</title>
+<title>Blueprints, state and ports · Blockies</title>
 <link rel="stylesheet" href="../assets/site.css">
 <script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
@@ -11,166 +11,307 @@
 <div id="nav"></div>
 <main>
   <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
-  <h1>Types, state and ports</h1>
-  <p class="lede">A Type is the blueprint a Blockie is made from. It decides what the Blockie looks
-  like, what data it holds, and what it can talk to.</p>
+  <h1 id="blueprints">Blueprints, state and ports</h1>
+  <p class="lede">A Blueprint is the plan a Blockie is made from. It decides what the Blockie looks
+  like, what data it owns, and what it can talk to. The hard part is keeping the Blueprint, the
+  value types inside it, and the appearance apart.</p>
 
-  <h2>A blueprint, not a thing</h2>
-  <p>A <a class="term" href="../glossary.html#type-package">Type package</a> is immutable and
-  <a class="term" href="../glossary.html#digest">digest-pinned</a>: a World refers to one exact
-  version, and changing the Type means publishing a new version. Nothing silently updates
-  underneath a running World.</p>
+  <div class="callout">
+    <span class="label">Running example</span>
+    <p>The <a href="example.html">dashboard</a> has a button, two counters, and a gauge. This page
+    uses the button, the counter, and the gauge, because they are small enough to read in full.</p>
+  </div>
+
+  <h2 id="three-words">Three words that look alike</h2>
+  <p>"Type" used to mean two different things, so the vocabulary now separates them. When you read
+  the rest of the guide, hold these three apart:</p>
 
   <div class="mermaid"><script type="text/plain">
 flowchart TB
-  T["Type package<br/>immutable, digest-pinned"] --> A["archetype<br/>shape + renderer package"]
-  T --> S["state schema + initial value"]
-  T --> C["config schema + defaults"]
-  T --> P["ports"]
-  T --> L["logic: compute and reduce<br/>optional, pure"]
-  P --> V["value ports<br/>in and out"]
-  P --> E["event ports<br/>in and out"]
-  V --> PR["value output may declare<br/>producer: compute or process"]
-  E --> CL["event input may declare<br/>claimable: true"]
+  W["the words"] --> B["Blueprint<br/>the plan for a Blockie"]
+  W --> V["value type<br/>the shape of a value"]
+  B --> A["appearance<br/>geometry + renderer"]
+  B --> S["state schema<br/>a value type"]
+  B --> C["config schema<br/>a value type"]
+  B --> P["ports<br/>each has a value type"]
   </script></div>
 
-  <h2>Three kinds of data</h2>
-  <p>This is the most common source of confusion, so it gets a table.</p>
   <table>
-    <thead><tr><th>Data</th><th>Belongs to</th><th>Changes how</th><th>Example</th></tr></thead>
+    <thead><tr><th>Word</th><th>What it is</th><th>Example</th></tr></thead>
     <tbody>
-      <tr>
-        <td><strong>Configuration</strong></td>
-        <td>the Blockie</td>
-        <td>edited by an actor</td>
-        <td>"currency: IDR", "label: Revenue"</td>
-      </tr>
-      <tr>
-        <td><strong>Model State</strong></td>
-        <td>the Blockie</td>
-        <td>only through its own reducer</td>
-        <td>a counter's current count</td>
-      </tr>
-      <tr>
-        <td><strong>Run state</strong></td>
-        <td>a Run</td>
-        <td>only by that Run's steps</td>
-        <td>a worker's current plan, checkpointed</td>
-      </tr>
+      <tr><td><strong>Blueprint</strong></td><td>The immutable, digest-pinned plan for a Blockie</td><td><code>counter@1</code></td></tr>
+      <tr><td><strong>value type</strong></td><td>The shape of one value: primitive, record, array, union</td><td><code>{ count: integer }</code></td></tr>
+      <tr><td><strong>appearance</strong></td><td>The visual part of a Blueprint: a geometry tag and a renderer package</td><td><code>rounded-rect-2d</code> + <code>renderer/counter</code></td></tr>
     </tbody>
   </table>
-  <p>They are separate on purpose. If a Run could write the Blockie's Model State, one entity would
-  have two writers, and "what is the value" would depend on timing. See
-  <a href="processes.html">Processes</a>.</p>
 
-  <h2>Ports: the only way in or out</h2>
+  <p>A value type is not a Blueprint. <code>{ count: integer }</code> describes the shape of the
+  counter's state; it does not say what the counter looks like, what it can do, or how it behaves.
+  A Blueprint contains value types. The schema calls a value type <code>BtsType</code>, from the
+  Blockies Value Type System (BTS).</p>
+
+  <h2 id="anatomy">What a Blueprint contains</h2>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  T["Blueprint<br/>immutable, digest-pinned"] --> A["appearance<br/>geometry + renderer"]
+  T --> S["state schema + initial value"]
+  T --> C["config schema + defaults"]
+  T --> P["ports<br/>value and event"]
+  T --> L["logic<br/>compute and reduce"]
+  </script></div>
+
+  <table>
+    <thead><tr><th>Part</th><th>Answers</th><th>Counter example</th></tr></thead>
+    <tbody>
+      <tr><td><strong>appearance</strong></td><td>How is it drawn?</td><td>rounded rectangle, counter renderer</td></tr>
+      <tr><td><strong>state schema + initial</strong></td><td>What does it own, and where does it start?</td><td><code>{ count: integer }</code>, starts at 0</td></tr>
+      <tr><td><strong>config schema + defaults</strong></td><td>What parameterises this instance?</td><td><code>{ step: integer }</code>, defaults to 1</td></tr>
+      <tr><td><strong>ports</strong></td><td>What can it talk to, and in which direction?</td><td><code>increment</code> in, <code>count</code> out</td></tr>
+      <tr><td><strong>compute</strong></td><td>What derived values does it publish?</td><td><code>count = state.count</code></td></tr>
+      <tr><td><strong>reduce</strong></td><td>How do events change its state?</td><td><code>on increment: count += step</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="blueprint-vs-instance">Blueprint vs Blockie</h2>
+  <p>A Blueprint is a recipe; a Blockie is a cake. The recipe is immutable and shared. Each cake has
+  its own config and its own state, and changing one cake does not change the recipe or the other
+  cakes.</p>
+
+  <p>Counter 1 and counter 2 are both <code>counter@1</code>. They differ only in config:</p>
+
+  <table>
+    <thead><tr><th>Blockie</th><th><code>config.step</code></th><th><code>state.count</code> after three increments</th><th><code>count</code> output</th></tr></thead>
+    <tbody>
+      <tr><td>counter 1</td><td>1</td><td>3</td><td>3</td></tr>
+      <tr><td>counter 2</td><td>10</td><td>30</td><td>30</td></tr>
+    </tbody>
+  </table>
+
+  <p>In the document, an instance is just a pinned Blueprint plus two values:</p>
+
+  <pre><code>{
+  "id": "counter1",
+  "blueprint": { "id": "counter", "version": "1.0.0", "digest": "sha256:..." },
+  "config": { "step": 1 },
+  "state":  { "count": 0 }
+}</code></pre>
+
+  <p>If the behaviour itself differed, not just the parameter, they would need different Blueprints.
+  Config is for the same plan with different settings; a different plan is a different Blueprint.</p>
+
+  <h2 id="config-vs-state">Configuration vs Blockie state</h2>
+  <p>Both are typed values stored on the Blockie, which is why they look alike. The difference is
+  who may change them and what they mean.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  ACT["actor"] -->|"document transaction"| CFG["Configuration<br/>declared, typed"]
+  CFG -. "read-only" .-> LOGIC["reducer / compute / step"]
+  EV["event"] --> RED["reducer"]
+  RED -->|"writes"| MS["Blockie state<br/>typed, initial value"]
+  MS -. "read" .-> LOGIC
+  </script></div>
+
+  <table>
+    <thead><tr><th></th><th>Configuration</th><th>Blockie state</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Analogy</strong></td><td>the settings you pass to a constructor</td><td>the current reading on the dashboard</td></tr>
+      <tr><td><strong>Meaning</strong></td><td>what this instance <em>is</em></td><td>what this instance <em>is doing now</em></td></tr>
+      <tr><td><strong>Set by</strong></td><td>an actor, through a document transaction</td><td>the Blockie's own reducer</td></tr>
+      <tr><td><strong>Written by</strong></td><td>authorised document transaction</td><td>only the reducer</td></tr>
+      <tr><td><strong>Read by</strong></td><td>reducer, compute, and a Run's step</td><td>reducer and compute</td></tr>
+      <tr><td><strong>Changes when</strong></td><td>someone edits it</td><td>an event arrives</td></tr>
+      <tr><td><strong>Effect on a Run</strong></td><td>takes effect at the next step; does <strong>not</strong> wake it</td><td>can change a computed output, which may satisfy a dependency wait</td></tr>
+      <tr><td><strong>Counter example</strong></td><td><code>step = 10</code>, <code>label = "Revenue"</code></td><td><code>count = 30</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="label">The test</span>
+    <p>If it changes because of an event, it is <strong>state</strong>. If it changes because
+    someone configured the instance, it is <strong>config</strong>. Putting <code>step</code> in
+    state would force every counter to spend a reducer transition to change a setting; putting
+    <code>count</code> in config would make the counter unable to count.</p>
+  </div>
+
+  <p>Why does the distinction matter beyond tidiness? Because a config change and a state change
+  have different consequences. A config change takes effect at the next step and does not wake a
+  waiting Run (P-21, D-040). A state change can propagate through compute to a value output, and
+  that output can satisfy a Run's dependency wait (P-33). Same storage, different behaviour.</p>
+
+  <h2 id="ports">Ports: the only way in or out</h2>
   <p>A port is a typed socket. Every port has a <strong>direction</strong> and a
-  <strong>kind</strong>.</p>
+  <strong>kind</strong>; every port has a value type. Nothing else is addressable from outside.</p>
 
   <table>
-    <thead><tr><th>Kind</th><th>Means</th><th>Example</th></tr></thead>
+    <thead><tr><th>Port</th><th>Direction</th><th>Kind</th><th>Value type</th><th>Producer</th></tr></thead>
     <tbody>
-      <tr>
-        <td><strong>value</strong></td>
-        <td>the latest information, like a variable</td>
-        <td><code>result: boolean</code></td>
-      </tr>
-      <tr>
-        <td><strong>event</strong></td>
-        <td>a discrete occurrence, like a message</td>
-        <td><code>on_press: {}</code></td>
-      </tr>
+      <tr><td><code>on_press</code></td><td>in</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
+      <tr><td><code>on_toggle</code></td><td>out</td><td>event</td><td><code>{ pressed: boolean }</code></td><td>—</td></tr>
+      <tr><td><code>pressed</code></td><td>out</td><td>value</td><td><code>boolean</code></td><td><code>compute</code></td></tr>
+      <tr><td><code>increment</code></td><td>in</td><td>event</td><td><code>{ by?: integer }</code></td><td>—</td></tr>
+      <tr><td><code>count</code></td><td>out</td><td>value</td><td><code>integer</code></td><td><code>compute</code></td></tr>
+      <tr><td><code>value</code></td><td>in</td><td>value</td><td><code>number</code></td><td>—</td></tr>
+      <tr><td><code>display</code></td><td>out</td><td>value</td><td><code>string</code></td><td><code>compute</code></td></tr>
     </tbody>
   </table>
 
-  <p>An event is not a value that happens to be true right now. "The button was pressed" cannot be
-  represented by a boolean that stays true, because the second press would be invisible. That is
-  why the two kinds exist.</p>
+  <h3>Value vs event</h3>
+  <p>A <strong>value</strong> is the latest information, like a variable. An <strong>event</strong>
+  is a discrete occurrence, like a message. The difference is not stylistic: a button press cannot
+  be a boolean that stays true, because the second press would be invisible.</p>
 
-  <h2>Who produces a value</h2>
-  <p>A value output declares exactly one <a class="term" href="../glossary.html#producer">producer</a>:</p>
+  <table>
+    <thead><tr><th></th><th>Value</th><th>Event</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Question it answers</strong></td><td>what is true now?</td><td>what happened?</td></tr>
+      <tr><td><strong>Repeated occurrences</strong></td><td>collapse into the latest value</td><td>each one is a separate delivery</td></tr>
+      <tr><td><strong>Consumed by</strong></td><td>compute, and a Run's <code>reads</code></td><td>a reducer, or a Run's inbox</td></tr>
+      <tr><td><strong>Can be missed?</strong></td><td>no, the current value is always there</td><td>yes, if nothing handles it</td></tr>
+      <tr><td><strong>Button example</strong></td><td><code>pressed: boolean</code></td><td><code>on_press: {}</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="producer">Who produces a value</h2>
+  <p>A value output declares exactly one producer. The choice is made when the Blueprint is
+  authored, not at run time.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  V["value output port"] --> Q{"does the value need to wait,<br/>call outside,<br/>or take many steps?"}
+  Q -->|"no"| C["producer: compute<br/>pure, value phase"]
+  Q -->|"yes"| P["producer: process<br/>published by a Run"]
+  C --> CA["available whenever<br/>its inputs are available"]
+  P --> PA["unavailable when<br/>the host is vacant"]
+  </script></div>
+
+  <table>
+    <thead><tr><th></th><th><code>compute</code></th><th><code>process</code></th></tr></thead>
+    <tbody>
+      <tr><td><strong>Who produces</strong></td><td>the Blueprint's pure function</td><td>the attached Run's step</td></tr>
+      <tr><td><strong>When</strong></td><td>value phase, when inputs are dirty</td><td>process phase, when the Run steps</td></tr>
+      <tr><td><strong>Availability</strong></td><td>whenever its inputs are available</td><td>only while a Run is attached (C-32)</td></tr>
+      <tr><td><strong>Can wait?</strong></td><td>no</td><td>yes, through wait conditions</td></tr>
+      <tr><td><strong>Can call outside?</strong></td><td>no</td><td>yes, through effects after commit</td></tr>
+      <tr><td><strong>Writes</strong></td><td>nothing; returns output values</td><td>its own Run state; publishes outputs</td></tr>
+      <tr><td><strong>Counter example</strong></td><td><code>count = state.count</code></td><td>a status that depends on an external service</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="label">The correction most people need</span>
+    <p><code>compute</code> does <strong>not</strong> change Blockie state. It is pure: it reads
+    state, config, and input values, and returns output values. The <strong>reducer</strong>
+    changes state. A <code>process</code> changes <strong>Run state</strong>, and publishes to the
+    host's <code>process</code> outputs; it never writes the host's Blockie state (C-45).</p>
+  </div>
+
+  <p>Why not use a process for every value? Because a Run has identity, lifecycle, persistence,
+  scheduling, and a step budget. For a formatting function, that is enormous overhead, and it makes
+  the output <strong>unavailable whenever no Run is attached</strong>. A compute output is
+  available as long as its inputs are. D-011's "no performance tier of process" means exactly
+  this: compute is the synchronous dataflow path, not a fast process.</p>
+
+  <h2 id="three-functions">The three functions</h2>
+  <p>A Blueprint may declare two functions; a Process definition declares a third. They run at
+  different times and have different authority.</p>
+
+  <table>
+    <thead><tr><th>Function</th><th>Trigger</th><th>Reads</th><th>Writes</th><th>Can wait?</th><th>Phase</th></tr></thead>
+    <tbody>
+      <tr><td><code>reduce</code></td><td>an event arrives on an unclaimed input</td><td>state, config, event</td><td>Blockie state</td><td>no</td><td>event</td></tr>
+      <tr><td><code>compute</code></td><td>an input value changes</td><td>state, config, input values</td><td>nothing; returns values</td><td>no</td><td>value</td></tr>
+      <tr><td><code>step</code></td><td>the Run is scheduled</td><td>Run state, config, reads, inbox, grant</td><td>Run state; publishes <code>process</code> outputs</td><td>yes</td><td>process</td></tr>
+    </tbody>
+  </table>
+
+  <p>The ordering is not arbitrary. Reducers run first, so compute sees the final state of the
+  transaction. Steps run before compute, so a step's published value is visible in the same
+  generation. A compute never runs between two reducer deliveries, because it would calculate from
+  a state that is about to change.</p>
+
+  <h3>What a reducer looks like</h3>
+  <p>A reducer handles one event and returns the complete next state. It may also emit events,
+  request effects, or dispatch to a member, but it cannot wait and it cannot call outside.</p>
+
+  <pre><code>reduce(state, config, event):
+  on increment:
+    next.count = state.count + (event.by ?? config.step)
+  on reset:
+    next.count = 0</code></pre>
+
+  <p>Two properties matter. It is <strong>pure</strong>: the same state, config, and event always
+  produce the same next state. And it is <strong>exclusive</strong>: if the event input is claimed
+  by an attached Run, the reducer never sees the event at all. The delivery goes to the Run's
+  inbox instead (P-15, P-16).</p>
+
+  <h2 id="mistakes">Five mistakes this page is trying to prevent</h2>
+  <ol>
+    <li><strong>Using "Type" for both things.</strong> Say Blueprint for the plan, value type for the
+    shape. If a sentence works with both, it is ambiguous.</li>
+    <li><strong>Putting a setting in state.</strong> If it changes because someone configured the
+    instance, it is config. If it changes because of an event, it is state.</li>
+    <li><strong>Expecting compute to change state.</strong> Compute is pure. The reducer owns state;
+    compute publishes values derived from it.</li>
+    <li><strong>Using a process for a cheap derived value.</strong> A process makes the value
+    unavailable when no Run is attached, and pays identity and scheduling for a formatting
+    function.</li>
+    <li><strong>Treating a process port as having a default.</strong> A process port with no
+    attached Run is unavailable. Consumers are blocked; they never see a default or a stale
+    value (C-32).</li>
+  </ol>
+
+  <h2 id="rules">The rules, in one place</h2>
   <ul>
-    <li><code>compute</code> — the Type's own pure function produces it;</li>
-    <li><code>process</code> — only an attached Run may publish to it.</li>
+    <li><strong>C-33.</strong> A Blueprint declares an appearance, state and config schemas with
+    initial values, ports, and optional compute and reduce logic.</li>
+    <li><strong>C-34.</strong> Every port declares direction, kind, and a value type. A value output
+    may declare <code>producer: compute | process</code>. An event input may declare
+    <code>claimable: true</code>.</li>
+    <li><strong>C-35.</strong> A Blockie has at most one effective producer per value output, and
+    never exposes a port its Blueprint does not declare.</li>
+    <li><strong>C-36.</strong> A Blueprint is immutable once published; changing it means a new
+    version.</li>
+    <li><strong>C-45.</strong> A Run never writes the World document and never writes its host's
+    Blockie state.</li>
+    <li><strong>P-5.</strong> Run state is owned by the Run, never by the host's reducer or
+    compute.</li>
+    <li><strong>D-017.</strong> A value output is produced by compute or by a process, never both.</li>
   </ul>
-  <p>One producer, never both. If both could write, the value would depend on execution order. A
-  <code>process</code> port with no attached Run is <strong>unavailable</strong>, and its consumers
-  are blocked — never a stale value, never a default.</p>
-
-  <h2>Who may own an input</h2>
-  <p>An event input may declare <code>claimable: true</code>. That means an attached Run may take
-  ownership of it: deliveries go to the Run's inbox instead of the Blockie's reducer. It is
-  exclusive — reducer-owned or run-owned, never both.</p>
-  <p>This is the mechanism that stops an event from being handled twice. Full story in
-  <a href="processes.html#claims">Processes → claims</a>.</p>
-
-  <h2>Compute and reduce</h2>
-  <p>A Type may supply two optional functions.</p>
-  <div class="card">
-    <h3>compute</h3>
-    <p>Takes state, config, and input values. Returns output values. It cannot change state, emit
-    events, or talk to the outside world.</p>
-  </div>
-  <div class="card">
-    <h3>reduce</h3>
-    <p>Takes state, config, and one event. Returns the complete next state, plus any events,
-    dispatches, and effect requests. It changes only its own Blockie's state.</p>
-  </div>
-
-  <div class="callout">
-    <span class="label">Pure</span>
-    <p>A function is <a class="term" href="../glossary.html#pure">pure</a> when the same inputs
-    always produce the same outputs and nothing outside is touched. No clock, no randomness, no
-    network. Purity is what makes a World reproducible: two machines given the same inputs must
-    agree.</p>
-  </div>
-
-  <h2>Types of values</h2>
-  <p>Values are described by the Blockies Type System: primitives like <code>integer</code> and
-  <code>decimal</code>, and composite types like records, arrays, and unions. Two rules matter for
-  learning:</p>
-  <ul>
-    <li><strong>Assignability</strong> — a connection is legal only if every value the source can
-    produce is accepted by the target. Direction matters: <code>integer</code> fits
-    <code>number</code>, not the other way round.</li>
-    <li><strong>No implicit conversion</strong> — <code>"1.5"</code> never becomes
-    <code>1.5</code>. A silent conversion is a bug that appears months later, so a conversion must
-    be an explicit Blockie.</li>
-  </ul>
-
-  <div class="card">
-    <h3>Terms on this page</h3>
-    <ul class="small">
-      <li><strong>Type package</strong> — the immutable blueprint for a Blockie.</li>
-      <li><strong>Archetype</strong> — the visual shape plus which renderer package draws it.</li>
-      <li><strong>Digest</strong> — a content hash that pins an exact version.</li>
-      <li><strong>Pure</strong> — same inputs, same outputs, no side effects.</li>
-      <li><strong>Producer</strong> — the one thing allowed to write a value output.</li>
-      <li><strong>Assignability</strong> — whether a source type safely fits a target type.</li>
-    </ul>
-  </div>
 
   <section class="check">
     <h2>Check yourself</h2>
     <details>
-      <summary>Why can't a Type have both compute and a Run producing the same output?</summary>
-      <p>Because then two writers decide the value, and the result would depend on which ran last.
-      The <code>producer</code> declaration forces the choice to be made once, at design time.</p>
+      <summary>Is <code>{ count: integer }</code> a Blueprint?</summary>
+      <p>No. It is a value type: the shape of a value. A Blueprint is the whole plan, and it
+      contains this value type as its state schema.</p>
     </details>
     <details>
-      <summary>What happens to a <code>process</code> output when its Run finishes?</summary>
-      <p>It becomes unavailable. Consumers are blocked rather than reading the last value, because
-      the last value no longer describes anything that exists.</p>
+      <summary>A counter's <code>step</code> is 10. Is that config or state?</summary>
+      <p>Config. It parameterises the instance and is set by a document transaction. The current
+      <code>count</code> is state, because the reducer changes it when an event arrives.</p>
     </details>
     <details>
-      <summary>Why is "no implicit conversion" a feature?</summary>
-      <p>Because coercion hides mistakes. A World where <code>"1.5"</code> silently becomes a number
-      will eventually produce a wrong chart with no error anywhere.</p>
+      <summary>Can compute change <code>state.count</code>?</summary>
+      <p>No. Compute is pure; it reads state and returns output values. The reducer changes
+      <code>state.count</code> in the event phase.</p>
+    </details>
+    <details>
+      <summary>A <code>process</code> port has no attached Run. What does a consumer read?</summary>
+      <p>Nothing. The port is unavailable, and the consumer is blocked. It never falls back to a
+      default or the last value (C-32).</p>
+    </details>
+    <details>
+      <summary>Why can't a button press be a boolean value input?</summary>
+      <p>Because a boolean describes what is true now, not what happened. The second press would
+      leave the value unchanged and be invisible. A press is an event; <code>pressed</code> is the
+      value that results from it.</p>
     </details>
   </section>
 
   <div class="next">
-    <a href="ontology.html">← Entities and identity</a>
+    <a href="example.html">← The running example</a>
     <a href="space.html">Next: space and appearance →</a>
   </div>
 </main>

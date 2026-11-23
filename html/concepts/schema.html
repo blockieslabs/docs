@@ -11,16 +11,27 @@
 <div id="nav"></div>
 <main>
   <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
-  <h1>The document</h1>
+  <h1 id="document">The document</h1>
   <p class="lede">A World is one JSON document with seven tables. It is small on purpose: everything
   that can be computed is absent.</p>
 
-  <h2>The tables</h2>
+  <div class="callout">
+    <span class="label">Running example</span>
+    <p>The <a href="example.html">dashboard</a> is one World. This page shows a reduced version of it
+    as JSON: one counter, one Composite, one placement. The full example has a button, a second
+    counter, a gauge, a manager, and two runs.</p>
+  </div>
+
+  <h2 id="tables">The tables</h2>
+  <p>The analogy is a filing cabinet. Each drawer holds one kind of record; a drawer is not a
+  summary of another drawer. If you want to know where something is, you open the placement drawer,
+  not the Blockie drawer.</p>
+
   <table>
     <thead><tr><th>Table</th><th>Holds</th><th>Keyed by</th></tr></thead>
     <tbody>
       <tr><td><code>frame</code></td><td>the root coordinate scope</td><td>—</td></tr>
-      <tr><td><code>definitions</code></td><td>pinned references and embedded blueprints</td><td>—</td></tr>
+      <tr><td><code>definitions</code></td><td>pinned references and embedded Blueprints</td><td>—</td></tr>
       <tr><td><code>blockies</code></td><td>the inhabitants</td><td>entity id</td></tr>
       <tr><td><code>composites</code></td><td>assemblies and their interfaces</td><td>entity id</td></tr>
       <tr><td><code>placements</code></td><td>where things are (or are absent)</td><td>entity id</td></tr>
@@ -39,19 +50,103 @@
     meet only where a union is explicit.</p>
   </div>
 
-  <h2>A Blockie is four fields</h2>
-  <pre><code>{ "id": "...", "type": {...}, "config": {...}, "state": {...} }</code></pre>
+  <h2 id="reduced-world">A reduced World</h2>
+  <p>This is the smallest useful slice of the dashboard: one counter, one Composite, one placement.
+  It has the shape the schema expects; the digests are elided.</p>
+
+  <pre><code>{
+  "protocol": "blockies/0.1",
+  "id": "world-dashboard",
+  "frame": { "id": "frame", "space": "2d" },
+
+  "definitions": {
+    "published": { "blueprints": [], "processes": [] },
+    "embedded": {
+      "blueprints": [{
+        "id": "counter",
+        "version": "1.0.0",
+        "digest": "sha256:...",
+        "appearance": {
+          "geometry": "rounded-rect-2d",
+          "renderer": { "id": "renderer.counter", "version": "1", "digest": "sha256:..." }
+        },
+        "state": {
+          "type": { "kind": "record",
+                    "properties": { "count": { "kind": "primitive", "name": "integer" } },
+                    "additional_properties": false },
+          "initial": { "count": 0 }
+        },
+        "config": {
+          "type": { "kind": "record",
+                    "properties": { "step": { "kind": "primitive", "name": "integer" } },
+                    "additional_properties": false },
+          "defaults": { "step": 1 }
+        },
+        "ports": [
+          { "id": "increment", "direction": "in", "kind": "event",
+            "type": { "kind": "record", "properties": {}, "additional_properties": false } },
+          { "id": "count", "direction": "out", "kind": "value",
+            "type": { "kind": "primitive", "name": "integer" }, "producer": "compute" }
+        ]
+      }],
+      "processes": []
+    }
+  },
+
+  "blockies": {
+    "counter1": {
+      "id": "counter1",
+      "blueprint": { "id": "counter", "version": "1.0.0", "digest": "sha256:..." },
+      "config": { "step": 1 },
+      "state": { "count": 0 }
+    }
+  },
+
+  "composites": {
+    "dashboard": {
+      "id": "dashboard",
+      "origin": { "kind": "grouping" },
+      "members": [
+        { "entity": { "blockie": "counter1" }, "provenance": "grouping" }
+      ],
+      "aliases": [
+        { "id": "count", "direction": "out", "kind": "value",
+          "type": { "kind": "primitive", "name": "integer" },
+          "ref": { "member": { "blockie": "counter1" }, "port": "count" } }
+      ],
+      "folds": []
+    }
+  },
+
+  "placements": {
+    "counter1": {
+      "scope": { "composite": "dashboard" },
+      "transform": { "translate": [20, 10], "scale": 1 },
+      "layer": 0
+    }
+  },
+
+  "connections": [],
+  "runs": {}
+}</code></pre>
+
+  <p>Notice the division of labour. The Blockie owns identity, Blueprint, config, and state. The
+  Composite owns membership and the alias. The placement table owns the coordinate. No table repeats
+  another table's fact.</p>
+
+  <h2 id="blockie">A Blockie is four fields</h2>
+  <pre><code>{ "id": "...", "blueprint": {...}, "config": {...}, "state": {...} }</code></pre>
   <p>No placement, no mode, no parent, no owner, no running flag. Every one of those is a separate
   table or a derivation. If a field is added later that duplicates another table, that is a bug.</p>
 
-  <h2>Absent is not null</h2>
+  <h2 id="absence">Absent is not null</h2>
   <p>A Blockie with no placement is <strong>absent</strong> from <code>placements</code>. A dissolved
   Composite is absent from <code>composites</code>. Neither is stored as <code>null</code>.</p>
   <p>This matters because absent and null mean different things throughout the protocol: a record
   with a null property is not the same as a record without that property, and a value that is
   explicitly null is not the same as a missing input.</p>
 
-  <h2>What is deliberately missing</h2>
+  <h2 id="missing">What is deliberately missing</h2>
   <p>This list is the fastest way to understand the architecture. Every item was removed on
   purpose.</p>
   <table>
@@ -72,7 +167,19 @@
     </tbody>
   </table>
 
-  <h2>Validation in three passes</h2>
+  <h2 id="shape-vs-meaning">Schema defines shape, specifications define meaning</h2>
+  <div class="callout">
+    <span class="label">The division</span>
+    <p>The JSON Schema answers "is this a valid record?". The specifications answer "what does this
+    record mean, and what may happen to it?". Neither redefines the other. A field that appears in
+    both must agree.</p>
+  </div>
+  <p>For example, the schema says a <code>Run.status</code> is one of eight strings. The process
+  specification says which transitions are legal and who may perform them. A document can be
+  schema-valid and still violate an invariant — which is why validation has three passes, not
+  one.</p>
+
+  <h2 id="validation">Validation in three passes</h2>
   <ol>
     <li><strong>Structural</strong> — does it match the schema? Unknown fields are rejected.</li>
     <li><strong>Cross-reference</strong> — does every reference resolve, and does every type relation
@@ -84,7 +191,18 @@
   with one exception: a dangling manager designation is repaired by clearing it, because a crashed
   host can leave one and refusing to open the World would be worse.</p>
 
-  <h2>Where the real files are</h2>
+  <table>
+    <thead><tr><th>Failure</th><th>Pass</th><th>Example</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Unknown field</td><td>structural</td><td><code>blockie.mode</code></td><td>reject</td></tr>
+      <tr><td>Missing reference</td><td>cross-reference</td><td>a connection to a port that does not exist</td><td>reject</td></tr>
+      <tr><td>Type mismatch</td><td>cross-reference</td><td>an <code>integer</code> output into a <code>boolean</code> input</td><td>reject</td></tr>
+      <tr><td>Two hosts for one Run</td><td>invariant</td><td>a run listed under two Blockies</td><td>reject</td></tr>
+      <tr><td>Dangling manager</td><td>invariant</td><td>the manager Run is terminal</td><td>repair: clear it</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="files">Where the real files are</h2>
   <ul>
     <li><code>schema/blockies-0.schema.json</code> — the machine-readable schema</li>
     <li><code>schema/0001-minimal-model.md</code> — the model with a traceability table</li>
@@ -92,15 +210,19 @@
     <li><code>schema/0002-conformance-fixtures.md</code> — 6 schema, 21 validator, 7 runtime vectors</li>
   </ul>
 
-  <div class="card">
-    <h3>Terms on this page</h3>
-    <ul class="small">
-      <li><strong>Canonical document</strong> — the one shape every implementation reads and writes.</li>
-      <li><strong>Cross-reference validation</strong> — checking that ids, ports, and types resolve.</li>
-      <li><strong>Invariant</strong> — a rule that must hold for the World to be valid.</li>
-      <li><strong>Repair</strong> — an unambiguous fix applied at load instead of rejecting.</li>
-    </ul>
-  </div>
+  <h2 id="mistakes">Common mistakes</h2>
+  <ol>
+    <li><strong>Putting placement on the Blockie.</strong> It is optional and lives in its own
+    table; absence means unplaced.</li>
+    <li><strong>Adding a "running" flag.</strong> The run registry is authoritative; a flag would be
+    a second writer.</li>
+    <li><strong>Storing a derived value.</strong> Occupancy, status, footprint, and availability are
+    functions of records, not fields.</li>
+    <li><strong>Using null for absence.</strong> A missing record and a null value mean different
+    things.</li>
+    <li><strong>Treating schema-valid as World-valid.</strong> Cross-reference and invariant passes
+    exist for a reason.</li>
+  </ol>
 
   <section class="check">
     <h2>Check yourself</h2>
@@ -118,6 +240,16 @@
       <summary>Why is an unplaced Blockie absent rather than null?</summary>
       <p>Because null is a value and absence is not. The protocol keeps them distinct everywhere, so
       a missing placement must be missing, not null.</p>
+    </details>
+    <details>
+      <summary>Can a document be schema-valid but still invalid?</summary>
+      <p>Yes. The schema checks shape. Cross-reference and invariant passes check whether references
+      resolve and whether the World's rules hold. All three must pass.</p>
+    </details>
+    <details>
+      <summary>Where does the alias <code>count</code> live?</summary>
+      <p>In the Composite's alias table, pointing at <code>counter1.count</code>. It has no state of
+      its own; it is a public name for a port that already exists.</p>
     </details>
   </section>
 

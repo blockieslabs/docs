@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The running example · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
+  <h1 id="example">The running example</h1>
+  <p class="lede">One small World, used by every concept page. It has a button, two counters, a
+  gauge, a Composite that groups them, a Run that manages the group, and two views with different
+  permissions.</p>
+
+  <p>Concepts are easier to hold when they all point at the same thing. This page is that thing.
+  Every other concept page refers back to it: "the button", "the dashboard", "the manager run".
+  Nothing here is special; it is an ordinary World, small enough to fit on one screen.</p>
+
+  <h2>The cast</h2>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  subgraph D["Composite: dashboard"]
+    B["button<br/>state: pressed"]
+    C1["counter 1<br/>state: count"]
+    C2["counter 2<br/>state: count"]
+    G["gauge<br/>compute: display"]
+    F["fold: total<br/>sum of both counts"]
+  end
+  M["manager Blockie<br/>hosts the orchestrator Run"]
+  B -- "on_toggle" --> C1
+  B -- "on_toggle" --> C2
+  C1 -- "count" --> G
+  C1 -- "count" --> F
+  C2 -- "count" --> F
+  M -. "reads count" .-> C1
+  M -. "dispatches increment" .-> C2
+  </script></div>
+
+  <table>
+    <thead><tr><th>Thing</th><th>Kind</th><th>What it is for</th></tr></thead>
+    <tbody>
+      <tr><td><strong>button</strong></td><td>Blockie</td><td>Holds <code>pressed</code>; toggles on <code>on_press</code>; emits <code>on_toggle</code>.</td></tr>
+      <tr><td><strong>counter 1</strong></td><td>Blockie</td><td>Holds <code>count</code>; increments on <code>increment</code>.</td></tr>
+      <tr><td><strong>counter 2</strong></td><td>Blockie</td><td>The same Blueprint as counter 1, with a different config.</td></tr>
+      <tr><td><strong>gauge</strong></td><td>Blockie</td><td>No mutable state; computes <code>display</code> from <code>value</code> and config.</td></tr>
+      <tr><td><strong>dashboard</strong></td><td>Composite</td><td>Groups the four members; exposes <code>press</code>, <code>total</code>, and <code>display</code> as aliases.</td></tr>
+      <tr><td><strong>manager</strong></td><td>Blockie + Run</td><td>Hosts the <code>orchestrator</code> Run; reads the count; dispatches increments.</td></tr>
+      <tr><td><strong>presenter</strong></td><td>Actor</td><td>May press the button and read the total.</td></tr>
+      <tr><td><strong>audience</strong></td><td>Actor</td><td>May read the display, but not press or mutate.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>The two Blueprints that carry most of the lesson</h2>
+  <p>A Blueprint is the plan for a Blockie. The button and the counter are small enough to read in
+  full, and they show the difference between <strong>config</strong>, <strong>Blockie state</strong>,
+  <strong>compute</strong>, and <strong>reduce</strong>.</p>
+
+  <div class="card">
+    <h3>button@1</h3>
+    <pre><code>blueprint button@1
+  appearance: rounded-rect-2d + renderer/button
+
+  state:  { pressed: boolean }   initial { pressed: false }
+  config: { label: string }      defaults { label: "Press" }
+
+  ports:
+    on_press   event in
+    on_toggle  event out
+    pressed    value out boolean, producer: compute
+
+  reduce(state, config, event):
+    on on_press:
+      next.pressed = not state.pressed
+      emit on_toggle { pressed: next.pressed }
+
+  compute(state, config):
+    pressed = state.pressed</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>counter@1</h3>
+    <pre><code>blueprint counter@1
+  appearance: rounded-rect-2d + renderer/counter
+
+  state:  { count: integer }    initial { count: 0 }
+  config: { step: integer }     defaults { step: 1 }
+
+  ports:
+    increment  event in { by?: integer }
+    count      value out integer, producer: compute
+
+  reduce(state, config, event):
+    on increment:
+      next.count = state.count + (event.by ?? config.step)
+
+  compute(state, config):
+    count = state.count</code></pre>
+  </div>
+
+  <p>Two Blockies can share a Blueprint and differ only in config. Counter 1 and counter 2 are both
+  <code>counter@1</code>; one might have <code>step: 1</code> and the other <code>step: 10</code>.
+  That is the point of config: it parameterises the instance without forking the Blueprint.</p>
+
+  <h2>The flow, end to end</h2>
+  <p>A presenter presses the button. One transaction carries the event through the reducer, the
+  counter, the gauge, and the commit. This is the sequence every concept page will refer to.</p>
+
+  <div class="mermaid"><script type="text/plain">
+sequenceDiagram
+  actor P as Presenter
+  participant B as button
+  participant C as counter 1
+  participant G as gauge
+  participant V as committed view
+  P->>B: deliver on_press
+  B->>B: reduce: toggle pressed
+  B->>C: emit on_toggle
+  C->>C: reduce: count += step
+  C->>G: value count
+  G->>G: compute: display
+  G-->>V: generation N+1
+  </script></div>
+
+  <p>Three different time scales appear in that diagram, and keeping them apart is most of the
+  model:</p>
+
+  <table>
+    <thead><tr><th>Step</th><th>Who acts</th><th>What changes</th><th>How long it lasts</th></tr></thead>
+    <tbody>
+      <tr><td>deliver <code>on_press</code></td><td>the presenter's principal</td><td>nothing yet</td><td>one boundary check</td></tr>
+      <tr><td>reduce <code>on_press</code></td><td>button's reducer</td><td>button's Blockie state</td><td>one event, one transaction</td></tr>
+      <tr><td>reduce <code>on_toggle</code></td><td>counter's reducer</td><td>counter's Blockie state</td><td>the same transaction, later in the event phase</td></tr>
+      <tr><td>compute <code>display</code></td><td>gauge's compute</td><td>nothing; it returns a value</td><td>the value phase of the same transaction</td></tr>
+      <tr><td>commit</td><td>the engine</td><td>a new generation</td><td>one commit</td></tr>
+    </tbody>
+  </table>
+
+  <h2>The Composite</h2>
+  <p>The dashboard is a grouping, not a Blockie. It owns membership edges, aliases, a fold, and a
+  manager designation. It has no ports of its own: the aliases <em>are</em> its interface.</p>
+
+  <div class="card">
+    <h3>dashboard</h3>
+    <pre><code>composite dashboard
+  origin: grouping
+
+  members:
+    button
+    counter 1
+    counter 2
+    gauge
+
+  aliases:
+    press    -> button.on_press
+    total    -> fold(sum, [counter 1.count, counter 2.count])
+    display  -> gauge.display
+
+  manager: manager Blockie
+  presentation: { label: "Sales dashboard", body: gauge }</code></pre>
+  </div>
+
+  <p>Two connections make the flow work. They are separate from membership: being in the same
+  Composite does not connect anything.</p>
+
+  <pre><code>connection button.on_toggle -> counter 1.increment
+connection button.on_toggle -> counter 2.increment
+connection counter 1.count  -> gauge.value</code></pre>
+
+  <h2>The Run</h2>
+  <p>The manager Blockie hosts a Run. The Run has its own state, claims one event input, reads one
+  value, and publishes one process output. It never writes the manager's Blockie state.</p>
+
+  <div class="card">
+    <h3>orchestrator@1</h3>
+    <pre><code>process orchestrator@1
+  stateType: { ticks: integer, last: string }
+
+  host:
+    claims:    [ on_tick ]
+    reads:     [ count ]
+    publishes: [ status ]
+
+  step(state, config, reads, inbox, grant):
+    if inbox is not empty:
+      state.ticks += 1
+    if reads.count > 10:
+      state.last = "high"
+    else:
+      state.last = "ok"
+    publish status = state.last
+    wait timer { after: 60s }</code></pre>
+  </div>
+
+  <p>The Run is what makes the manager an <em>activity</em> rather than a value. It can wait, be
+  cancelled, be observed, and survive a restart. The counter does not need any of that: it is a
+  reducer plus a compute, and it finishes inside one transaction.</p>
+
+  <h2>Two views, one World</h2>
+  <p>The presenter and the audience see the same Blockies. They differ in viewport, renderer, and
+  grant set. The audience view is not a copy of the World, and the renderer is not the thing that
+  hides the button.</p>
+
+  <table>
+    <thead><tr><th>View</th><th>Sees</th><th>May do</th></tr></thead>
+    <tbody>
+      <tr><td>presenter</td><td>the whole dashboard</td><td><code>deliver</code> on <code>press</code>; <code>read</code> on <code>total</code></td></tr>
+      <tr><td>audience</td><td>the dashboard, minus the button controls</td><td><code>read</code> on <code>display</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul>
+    <li><strong>The button and the counter share a shape.</strong> Both are Blockies with a
+    Blueprint, config, state, and ports. The difference is their Blueprint, not their kind.</li>
+    <li><strong>The gauge has no mutable state.</strong> Its output is a pure function of its input
+    and config. A Type does not need state to be useful.</li>
+    <li><strong>The dashboard has no ports.</strong> Its interface is the alias table. A Composite
+    is not a Blockie with extra steps.</li>
+    <li><strong>The manager Run is not the manager Blockie.</strong> The Blockie is the in-world
+    body; the Run is the activity. The Run owns its state; the Blockie owns its own.</li>
+    <li><strong>Membership, placement, connection, and authority are four different facts.</strong>
+    The counter is a member of the dashboard, placed at a coordinate, connected to the button, and
+    readable by the audience. None of those implies the others.</li>
+  </ul>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Why can counter 1 and counter 2 share a Blueprint but behave differently?</summary>
+      <p>Because the Blueprint declares the shape and the logic, and config supplies the per-instance
+      parameters. If one has <code>step: 1</code> and the other <code>step: 10</code>, the same
+      reducer produces different counts. If the behaviour itself differed, they would need different
+      Blueprints.</p>
+    </details>
+    <details>
+      <summary>Why is the dashboard not a Blockie?</summary>
+      <p>Because it has no Blueprint, no state, no ports, and no appearance of its own. It is a
+      grouping: membership edges, an alias table, a fold, a manager designation, and optional
+      presentation. Making it a Blockie would give it a second identity and a second way to be
+      controlled.</p>
+    </details>
+    <details>
+      <summary>Why does the gauge not need a reducer?</summary>
+      <p>It has no event input and no mutable state. Its output is computed from its input value and
+      config. A reducer is only needed when an event must change owned state.</p>
+    </details>
+    <details>
+      <summary>Who may press the button: the presenter, the audience, or the manager Run?</summary>
+      <p>The presenter, through a <code>deliver</code> grant on the <code>press</code> alias. The
+      audience is read-only in this example. The manager Run holds <code>composite.dispatch</code>,
+      so it can send an addressed event to a member, but that is a different path from an external
+      <code>deliver</code>; in this example it dispatches increments, not presses.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="ontology.html">Next: entities and identity →</a>
+    <a href="../index.html">Back to the overview</a>
+  </div>
+</main>
+<script src="../assets/vendor/pele.global.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

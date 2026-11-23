@@ -11,46 +11,58 @@
 <div id="nav"></div>
 <main>
   <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
-  <h1>Relationships and authority</h1>
+  <h1 id="relationships">Relationships and authority</h1>
   <p class="lede">If you remember one page of this guide, make it this one. Almost every design
   argument in Blockies is about keeping two relationships from being confused for each other.</p>
 
-  <h2>The same Blockie, eight different facts</h2>
+  <div class="callout">
+    <span class="label">Running example</span>
+    <p>In the <a href="example.html">dashboard</a>, counter 1 is a member of the Composite, placed
+    at a coordinate, connected to the button, hosted by no Run, watched by the audience, and
+    mutable by an agent. That is five different facts about one Blockie.</p>
+  </div>
+
+  <h2 id="nine">The same Blockie, nine different facts</h2>
   <p>Two entities can be related in several ways at once, and each way answers a different
   question. None of them implies another.</p>
 
   <div class="mermaid"><script type="text/plain">
 flowchart TB
-  B["Blockie X"]
-  C1["Composite A"]
-  C2["Composite B"]
-  S["actor session"]
-  R["Run"]
-  P["parent Run"]
-  C1 -- "membership" --> B
+  B["Blockie: counter 1"]
+  C["Composite: dashboard"]
+  M["manager Blockie"]
+  R["Run: orchestrator"]
+  S["audience session"]
+  C -- "membership" --> B
+  M -- "management" --> C
+  R -- "hosting" --> M
   S -- "attention (derived)" --> B
   S -- "authority (grant)" --> B
-  R -- "hosting" --> B
-  P -- "parentage" --> R
-  C2 -. "proximity, means nothing" .- B
+  C -. "placement is separate" .- B
   </script></div>
 
   <table>
-    <thead><tr><th>Relationship</th><th>Answers</th><th>Never implies</th></tr></thead>
+    <thead><tr><th>Relationship</th><th>Answers</th><th>Never implies</th><th>Dashboard example</th></tr></thead>
     <tbody>
-      <tr><td><strong>Placement</strong></td><td>Where is it?</td><td>membership, control</td></tr>
-      <tr><td><strong>Membership</strong></td><td>What is it part of?</td><td>ownership of its activity</td></tr>
-      <tr><td><strong>Nesting</strong></td><td>Which assembly contains which?</td><td>that child members are parent members</td></tr>
-      <tr><td><strong>Management</strong></td><td>Who coordinates this assembly?</td><td>access to member internals</td></tr>
-      <tr><td><strong>Hosting</strong></td><td>Which Blockie represents this activity?</td><td>membership</td></tr>
-      <tr><td><strong>Parentage</strong></td><td>Which activity spawned which?</td><td>grouping or authority</td></tr>
-      <tr><td><strong>Communication</strong></td><td>What talks to what?</td><td>permission</td></tr>
-      <tr><td><strong>Attention</strong></td><td>What is being watched?</td><td>access or control</td></tr>
-      <tr><td><strong>Lifecycle authority</strong></td><td>Who may stop this activity?</td><td>management</td></tr>
+      <tr><td><strong>Placement</strong></td><td>Where is it?</td><td>membership, control</td><td>counter 1 at (20, 10) inside dashboard</td></tr>
+      <tr><td><strong>Membership</strong></td><td>What is it part of?</td><td>ownership of its activity</td><td>counter 1 is a member of dashboard</td></tr>
+      <tr><td><strong>Nesting</strong></td><td>Which assembly contains which?</td><td>that child members are parent members</td><td>a "sales" Composite inside dashboard</td></tr>
+      <tr><td><strong>Management</strong></td><td>Who coordinates this assembly?</td><td>access to member internals</td><td>manager Blockie designated on dashboard</td></tr>
+      <tr><td><strong>Hosting</strong></td><td>Which Blockie represents this activity?</td><td>membership</td><td>manager Blockie hosts orchestrator</td></tr>
+      <tr><td><strong>Parentage</strong></td><td>Which activity spawned which?</td><td>grouping or authority</td><td>orchestrator spawns a worker Run</td></tr>
+      <tr><td><strong>Communication</strong></td><td>What talks to what?</td><td>permission</td><td>button.on_toggle → counter1.increment</td></tr>
+      <tr><td><strong>Attention</strong></td><td>What is being watched?</td><td>access or control</td><td>audience view frames the gauge</td></tr>
+      <tr><td><strong>Lifecycle authority</strong></td><td>Who may stop this activity?</td><td>management</td><td>a parent Run may cancel its child</td></tr>
     </tbody>
   </table>
 
-  <h2>Concrete confusions this prevents</h2>
+  <p>The analogy is an office. The seating chart is placement. The team roster is membership. The
+  division tree is nesting. The standup lead is management. The person whose badge opens the door is
+  hosting. The task assignment is parentage. The phone line is communication. The person reading the
+  dashboard is attention. The person who can fire the contractor is lifecycle authority. None of
+  those is the same as the others.</p>
+
+  <h2 id="confusions">Concrete confusions this prevents</h2>
   <div class="card">
     <h3>"It's next to the group, so it's part of it"</h3>
     <p>No. Membership is an explicit edge. Proximity is placement, and placement is semantically
@@ -72,7 +84,7 @@ flowchart TB
     grants nothing.</p>
   </div>
 
-  <h2>Attention is derived</h2>
+  <h2 id="attention">Attention is derived</h2>
   <p>Attention answers "what is being watched", and it is not an entity. It is a projection over two
   sources:</p>
   <ul>
@@ -83,7 +95,7 @@ flowchart TB
   <p>Because it is derived, there is no second truth about who is working on what. And because it
   grants nothing, moving a Blockie next to a Composite changes exactly one thing: the picture.</p>
 
-  <h2>Authority</h2>
+  <h2 id="authority">Authority</h2>
   <p>Authority answers "who may act". It is split in two, and the split matters:</p>
   <table>
     <thead><tr><th>Half</th><th>Lives in</th><th>Why there</th></tr></thead>
@@ -93,19 +105,47 @@ flowchart TB
     </tbody>
   </table>
 
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  subgraph EXT["outside the World"]
+    P["presenter"]
+    A["audience"]
+    G["agent"]
+  end
+  P --> P1["principal<br/>role: presenter"]
+  A --> A1["principal<br/>role: audience"]
+  G --> G1["principal<br/>role: agent"]
+  P1 --> BD["World boundary<br/>check once"]
+  A1 --> BD
+  G1 --> BD
+  BD --> EP["endpoint<br/>alias or port"]
+  EP --> E["Blockie or Composite"]
+  </script></div>
+
   <h3>Four verbs</h3>
   <table>
-    <thead><tr><th>Verb</th><th>Allows</th></tr></thead>
+    <thead><tr><th>Verb</th><th>Allows</th><th>Dashboard example</th></tr></thead>
     <tbody>
-      <tr><td><code>deliver</code></td><td>submit an event to an endpoint</td></tr>
-      <tr><td><code>read</code></td><td>read values and subscribe to generations</td></tr>
-      <tr><td><code>mutate</code></td><td>document operations: create, move, group, connect, present</td></tr>
-      <tr><td><code>run</code></td><td>attach, cancel, suspend, resume</td></tr>
+      <tr><td><code>deliver</code></td><td>submit an event to an endpoint</td><td>presenter presses <code>press</code></td></tr>
+      <tr><td><code>read</code></td><td>read values and subscribe to generations</td><td>audience reads <code>display</code></td></tr>
+      <tr><td><code>mutate</code></td><td>document operations: create, move, group, connect, present</td><td>agent adds a counter to dashboard</td></tr>
+      <tr><td><code>run</code></td><td>attach, cancel, suspend, resume</td><td>agent attaches the orchestrator</td></tr>
     </tbody>
   </table>
   <p>Scopes are <code>world</code>, <code>entities</code>, or <code>endpoints</code>. A grant on a
   Composite covers its public aliases only — never a member port, never member state. Nothing is
   granted by default.</p>
+
+  <h3>Who can do what in the dashboard</h3>
+  <table>
+    <thead><tr><th>Actor</th><th>Grant</th><th>Can</th><th>Cannot</th></tr></thead>
+    <tbody>
+      <tr><td><strong>presenter</strong></td><td><code>deliver</code> on <code>press</code>; <code>read</code> on <code>total</code></td><td>press the button, read the total</td><td>add or remove members</td></tr>
+      <tr><td><strong>audience</strong></td><td><code>read</code> on <code>display</code></td><td>see the gauge</td><td>press, read the total, mutate</td></tr>
+      <tr><td><strong>agent</strong></td><td><code>mutate</code> on dashboard; <code>run</code> on orchestrator</td><td>add a counter, attach or cancel the run</td><td>read member state without a <code>read</code> grant</td></tr>
+      <tr><td><strong>manager Run</strong></td><td><code>composite.dispatch</code></td><td>dispatch an event to a member</td><td>read member state, change membership, write the document</td></tr>
+    </tbody>
+  </table>
 
   <h3>Checked once, at the boundary</h3>
   <p>Authority is checked when an event or command <em>enters</em> the World. Internal routing —
@@ -123,21 +163,22 @@ flowchart TB
   <code>run</code>. Policy governs sessions, not the person holding the file. A file holder can
   edit the document, including its policy — pretending otherwise would be theatre.</p>
 
-  <h2>Lifecycle authority is its own thing</h2>
+  <h2 id="lifecycle">Lifecycle authority is its own thing</h2>
   <p>Being able to stop a Run is not management, and not membership. A parent Run may ask its
   descendants to cancel; a host may cancel its own Run; World policy may allow an operator to
   suspend anything. None of those make anyone a manager.</p>
 
-  <div class="card">
-    <h3>Terms on this page</h3>
-    <ul class="small">
-      <li><strong>Attention</strong> — a derived projection of what is being watched.</li>
-      <li><strong>Authority</strong> — a grant that permits an action on a scope.</li>
-      <li><strong>Grant</strong> — verb plus scope, held by a role or a Run.</li>
-      <li><strong>Principal</strong> — the acting identity a host issues to a session.</li>
-      <li><strong>Lifecycle authority</strong> — the separate right to stop an activity.</li>
-    </ul>
-  </div>
+  <h2 id="mistakes">Common mistakes</h2>
+  <ol>
+    <li><strong>"Next to" means "member".</strong> Placement is inert; membership is an explicit
+    edge.</li>
+    <li><strong>"Spawned" means "grouped".</strong> Parentage is about activity; membership is about
+    assembly.</li>
+    <li><strong>"Manager" means "owner".</strong> Management grants dispatch, nothing else.</li>
+    <li><strong>"Watching" means "allowed".</strong> Attention is derived and grants nothing.</li>
+    <li><strong>"The renderer hides it" means "it is secure".</strong> A renderer is never an
+    enforcement point; redaction happens before publish.</li>
+  </ol>
 
   <section class="check">
     <h2>Check yourself</h2>
@@ -155,6 +196,17 @@ flowchart TB
       <summary>Why does a manager's dispatch not re-check the original voter's permission?</summary>
       <p>Because the manager's right to dispatch was authorised once, at designation. Re-checking
       per hop would make delegation impossible and audit meaningless.</p>
+    </details>
+    <details>
+      <summary>Can the audience read the total?</summary>
+      <p>Only if it has a <code>read</code> grant on <code>total</code>. In the example it has
+      <code>read</code> on <code>display</code> only. Seeing the dashboard in a view does not grant
+      access to every alias.</p>
+    </details>
+    <details>
+      <summary>Does the manager Run need a <code>mutate</code> grant to change presentation?</summary>
+      <p>No, because it cannot change presentation at all. A Run never writes the document. Changing
+      presentation is a document transaction under an actor's <code>mutate</code> grant.</p>
     </details>
   </section>
 

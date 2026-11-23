@@ -11,33 +11,54 @@
 <div id="nav"></div>
 <main>
   <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
-  <h1>Composites</h1>
+  <h1 id="composites">Composites</h1>
   <p class="lede">A Composite is an assembly. It is not a Blockie, it has no shape of its own, and
   it owns no ports. That sounds like a weakness until you see what it buys.</p>
 
-  <h2>What it is</h2>
+  <div class="callout">
+    <span class="label">Running example</span>
+    <p>The <a href="example.html">dashboard</a> is a Composite. It groups the button, two counters,
+    and the gauge, exposes three aliases, declares a fold, and designates a manager. It has no
+    Blueprint and no state of its own.</p>
+  </div>
+
+  <h2 id="what">What it is</h2>
   <p>A Composite holds <strong>membership edges</strong> to Blockies and to other Composites, an
   <strong>alias table</strong> describing its public face, optional <strong>folds</strong>, an
   optional <strong>manager</strong> designation, and an optional presentation record.</p>
 
   <div class="mermaid"><script type="text/plain">
 flowchart TB
-  subgraph C["Composite: Button"]
-    M1["pixelA<br/>drawing member"]
-    M2["computerM<br/>occupied by R1"]
-    M3["pixelB<br/>drawing member"]
+  subgraph D["Composite: dashboard"]
+    B["button"]
+    C1["counter 1"]
+    C2["counter 2"]
+    G["gauge"]
+    F["fold: total<br/>sum of both counts"]
   end
-  A1["public event: press"] --> M2
-  M2 --> A2["public value: lit"]
-  A2 --> L["lamp<br/>outside the Composite"]
-  R["Run R1"] -. "hosted by" .-> M2
-  G["manager designation<br/>R1 holds dispatch"] -.-> C
+  A1["alias: press"] --> B
+  A2["alias: total"] --> F
+  A3["alias: display"] --> G
+  M["manager Blockie<br/>orchestrator Run"] -. "dispatch" .-> C2
+  M -. "reads count" .-> C1
   </script></div>
 
-  <p>Three drawing Blockies would look the same. The difference is that the middle one hosts a Run,
-  and the assembly exposes two endpoints. That is the entire "button".</p>
+  <p>The analogy is a labelled box. The box has a label, a list of contents, and maybe a person
+  responsible for it. The box is not one of the contents. If you pick up the box, you pick up the
+  things inside it, but the box does not become a thing inside itself.</p>
 
-  <h2>Membership</h2>
+  <table>
+    <thead><tr><th>Part</th><th>Answers</th><th>Dashboard example</th></tr></thead>
+    <tbody>
+      <tr><td><strong>membership</strong></td><td>what is directly inside?</td><td>button, counter 1, counter 2, gauge</td></tr>
+      <tr><td><strong>aliases</strong></td><td>what is the public face?</td><td><code>press</code>, <code>total</code>, <code>display</code></td></tr>
+      <tr><td><strong>folds</strong></td><td>what is aggregated?</td><td><code>total = sum(counts)</code></td></tr>
+      <tr><td><strong>manager</strong></td><td>who coordinates it?</td><td>the manager Blockie's Run</td></tr>
+      <tr><td><strong>presentation</strong></td><td>how is the group drawn?</td><td>label "Sales dashboard", body = gauge</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="membership">Membership</h2>
   <ul>
     <li><strong>Explicit.</strong> Being next to something, or looking like it, never creates
     membership.</li>
@@ -52,23 +73,50 @@ flowchart TB
     transaction.</li>
   </ul>
 
-  <h2>Two ways to get one</h2>
+  <p>Membership is not placement, and neither is nesting. Three separate facts:</p>
+
+  <table>
+    <thead><tr><th>Fact</th><th>Question</th><th>Dashboard example</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Membership</strong></td><td>Which Composite directly contains it?</td><td>counter 1 is a member of dashboard</td></tr>
+      <tr><td><strong>Placement</strong></td><td>Where is it, relative to its scope?</td><td>counter 1 is at (120, 80) inside dashboard</td></tr>
+      <tr><td><strong>Nesting</strong></td><td>Which Composite contains another?</td><td>a "sales" Composite inside dashboard</td></tr>
+    </tbody>
+  </table>
+
+  <p>Two Blockies can be at the same coordinate and not be members of the same Composite. Two
+  members can be on opposite sides of the Frame. Geometry never implies membership (C-23).</p>
+
+  <h2 id="origins">Two ways to get one</h2>
   <table>
     <thead><tr><th></th><th>Grouping</th><th>Template</th></tr></thead>
     <tbody>
-      <tr><td>Members</td><td>existing entities</td><td>freshly created from a definition</td></tr>
-      <tr><td>Membership</td><td>mutable</td><td>immutable for the instance</td></tr>
-      <tr><td>Provenance</td><td><code>grouping</code></td><td><code>template</code> + local node id</td></tr>
-      <tr><td>To change it</td><td>add or remove members</td><td>fork it into a grouping</td></tr>
+      <tr><td><strong>Members</strong></td><td>existing entities</td><td>freshly created from a definition</td></tr>
+      <tr><td><strong>Membership</strong></td><td>mutable</td><td>immutable for the instance</td></tr>
+      <tr><td><strong>Provenance</strong></td><td><code>grouping</code></td><td><code>template</code> + local node id</td></tr>
+      <tr><td><strong>Identity</strong></td><td>preserved</td><td>fresh for every instance</td></tr>
+      <tr><td><strong>To change it</strong></td><td>add or remove members</td><td>fork it into a grouping</td></tr>
+      <tr><td><strong>Dashboard</strong></td><td>this one</td><td>a "sales dashboard" template</td></tr>
     </tbody>
   </table>
+
   <p>Both are needed. Agents assemble existing things constantly (grouping), and reusable pieces
   need to be pinned and reproducible (template). A grouping can be <em>saved as</em> a definition;
   a template instance can be <em>forked</em> into a grouping, keeping every member identity.</p>
 
-  <h2>Aliases: the public face</h2>
+  <pre><code>group        dashboard [button, counter1, counter2, gauge]
+instantiate  sales-template@1 -> fresh ids for every member
+save_as      dashboard -> dashboard-template@1   (structure and config, no state)
+fork         sales-template-instance -> grouping (same member ids, mutable)</code></pre>
+
+  <h2 id="aliases">Aliases: the public face</h2>
   <p>A Composite has no ports. It has a table of <strong>aliases</strong>, each pointing at
   something that already exists: a member's port, or a fold.</p>
+
+  <pre><code>aliases:
+  press    -> button.on_press
+  total    -> fold(sum, [counter1.count, counter2.count])
+  display  -> gauge.display</code></pre>
 
   <div class="card">
     <h3>Alias rules</h3>
@@ -86,20 +134,38 @@ flowchart TB
     <span class="label">Why aliases instead of real ports</span>
     <p>Because a second port system would need its own types, its own bindings, and its own state to
     keep in sync with the members. An alias has no state, so there is nothing to sync and nothing
-    to disagree.</p>
+    to disagree with.</p>
   </div>
 
-  <h2>Folds: declared aggregation</h2>
+  <h3>Alias vs connection</h3>
+  <table>
+    <thead><tr><th></th><th>Alias</th><th>Connection</th></tr></thead>
+    <tbody>
+      <tr><td><strong>What it is</strong></td><td>a public name on a Composite</td><td>an edge between two endpoints</td></tr>
+      <tr><td><strong>Scope</strong></td><td>the Composite's interface</td><td>data or event flow</td></tr>
+      <tr><td><strong>State</strong></td><td>none</td><td>declared, materialised at run time</td></tr>
+      <tr><td><strong>Dashboard example</strong></td><td><code>press</code> → <code>button.on_press</code></td><td><code>button.on_toggle</code> → <code>counter1.increment</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="folds">Folds: declared aggregation</h2>
   <p>A normal value input accepts one producer. That rule is what makes values predictable — and it
   makes <code>SUM(A1:A10)</code> impossible, because summing is many-into-one.</p>
   <p>A <a class="term" href="../glossary.html#fold">fold</a> is the declared exception: a Composite
   may aggregate a named set of same-typed member outputs with one operation — <code>sum</code>,
   <code>count</code>, <code>min</code>, <code>max</code>, <code>collect</code>. It runs in the
   runtime, uses no process, and shares no state.</p>
-  <p>Aggregation becomes explicit rather than implicit. That is the difference between a fold and
-  a free-for-all.</p>
 
-  <h2>The manager</h2>
+  <pre><code>fold total:
+  operation: sum
+  selects:   [counter1.count, counter2.count]
+  result:    integer</code></pre>
+
+  <p>Aggregation becomes explicit rather than implicit. That is the difference between a fold and a
+  free-for-all. The fold is revalidated on every membership change: every selected member must
+  still expose the declared port with a compatible type (S-29).</p>
+
+  <h2 id="manager">The manager</h2>
   <p>A Composite may designate zero or one manager. The manager is <strong>one of its members</strong>
   — not an outside brain attached to the group.</p>
 
@@ -116,6 +182,17 @@ flowchart TB
   <strong><code>composite.dispatch</code></strong> — the ability to send an addressed event to a
   member, chosen from a declared member set.</p>
 
+  <table>
+    <thead><tr><th>Can</th><th>Cannot</th></tr></thead>
+    <tbody>
+      <tr><td>dispatch an event to a member in <code>memberSet</code></td><td>add, remove, move, or reparent a member</td></tr>
+      <tr><td>read its own <code>reads</code> values</td><td>read member Blockie state or configuration</td></tr>
+      <tr><td>publish its own <code>process</code> outputs</td><td>reach into a nested Composite's internals</td></tr>
+      <tr><td>be observed through an alias</td><td>cancel a member's Run</td></tr>
+      <tr><td>—</td><td>write any part of the document, including presentation</td></tr>
+    </tbody>
+  </table>
+
   <p>Everything else already works without authority:</p>
   <ul>
     <li>publishing a Composite output — the manager's Run publishes to its own host port, and an
@@ -131,7 +208,7 @@ flowchart TB
     presentation.</p>
   </div>
 
-  <h2>When the manager dies</h2>
+  <h2 id="manager-dies">When the manager dies</h2>
   <p>Five things must happen in <strong>one committed generation</strong>:</p>
   <ol>
     <li>the Run becomes terminal;</li>
@@ -143,22 +220,28 @@ flowchart TB
   <p>Split any one of those into a second transaction and you get a Composite claiming a manager
   that no longer exists.</p>
 
-  <h2>Nesting</h2>
+  <h2 id="nesting">Nesting</h2>
   <p>A Composite can contain another Composite. The parent sees the child's <em>public aliases</em>
   and nothing else. The child has its own manager, and the parent's manager gains no authority over
   it. If the child's manager dies, the child becomes unmanaged; the parent is untouched.</p>
 
-  <div class="card">
-    <h3>Terms on this page</h3>
-    <ul class="small">
-      <li><strong>Alias</strong> — a public name pointing at a member port or a fold.</li>
-      <li><strong>Fold</strong> — a declared aggregation over a set of member outputs.</li>
-      <li><strong>Provenance</strong> — where a membership edge came from.</li>
-      <li><strong>Materialisation</strong> — turning a template into real instances and relationships.</li>
-      <li><strong>Member set</strong> — the declared destinations a manager may dispatch to.</li>
-      <li><strong>Epoch</strong> — a counter that invalidates stale designations.</li>
-    </ul>
-  </div>
+  <p>A "sales" Composite inside the dashboard could expose <code>total</code> and <code>display</code>
+  to the dashboard. The dashboard's manager can dispatch to the sales Composite's aliases, but it
+  cannot address the sales Composite's counters directly.</p>
+
+  <h2 id="mistakes">Common mistakes</h2>
+  <ol>
+    <li><strong>Treating the Composite as a member.</strong> It is the box, not a thing in the box.
+    A Composite can be a member of another Composite, but not of itself.</li>
+    <li><strong>Confusing membership with placement.</strong> A Blockie can be placed inside a
+    Composite's bounds without being a member; a member can be placed far away.</li>
+    <li><strong>Giving the Composite ports.</strong> Its interface is the alias table. A second port
+    system would duplicate types and state.</li>
+    <li><strong>Expecting the manager to own the members.</strong> It has one grant: dispatch. It
+    does not own member state, membership, or presentation.</li>
+    <li><strong>Leaving an alias dangling.</strong> Removing a member that an alias references must
+    repair or reject the interface in the same commit.</li>
+  </ol>
 
   <section class="check">
     <h2>Check yourself</h2>
@@ -176,6 +259,17 @@ flowchart TB
       <summary>You remove a member that an alias points at. What must happen?</summary>
       <p>The same transaction must repair the alias or reject the change. Leaving a dangling alias
       would mean the Composite's public face refers to something that no longer exists.</p>
+    </details>
+    <details>
+      <summary>What is the difference between a grouping and a template?</summary>
+      <p>A grouping assembles existing entities and stays mutable. A template creates fresh
+      identities from a definition and is immutable for the instance; to change it, fork it into a
+      grouping.</p>
+    </details>
+    <details>
+      <summary>Can the dashboard's manager dispatch to a nested Composite's member?</summary>
+      <p>No. It can dispatch to the nested Composite's public aliases, not to its members. The
+      parent's authority stops at the child's interface.</p>
     </details>
   </section>
 

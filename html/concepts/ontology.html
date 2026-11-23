@@ -11,50 +11,78 @@
 <div id="nav"></div>
 <main>
   <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
-  <h1>Entities and identity</h1>
-  <p class="lede">A World contains four kinds of thing. Everything else in the architecture is a
-  relationship between them, a property of them, or a value derived from them.</p>
+  <h1 id="entities">Entities and identity</h1>
+  <p class="lede">A World contains four kinds of thing. Everything else is a relationship between
+  them, a property of them, or a value derived from them.</p>
 
-  <h2>What an entity is</h2>
+  <div class="callout">
+    <span class="label">Running example</span>
+    <p>The <a href="example.html">dashboard</a> contains a button, two counters, a gauge, a
+    Composite, a manager Blockie, and an orchestrator Run. This page names what each of those
+    <em>is</em> before the later pages explain how they behave.</p>
+  </div>
+
+  <h2 id="cast">The four kinds of thing</h2>
   <p>An <a class="term" href="../glossary.html#entity">entity</a> is something that exists in its
-  own right: it has an identity, it can be referred to, and it survives changes around it. In
-  Blockies there are exactly four, and no more.</p>
+  own right: it has an identity, it can be referred to, and it survives changes around it. There
+  are exactly four, and no more.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  subgraph WORLD["the World"]
+    B["Blockie: manager<br/>id · blueprint · config · state"]
+    C["Composite: dashboard<br/>membership · aliases · fold · manager"]
+    R["Run: orchestrator<br/>state · inbox · status"]
+  end
+  D1["Blueprint: manager@1<br/>immutable plan"]
+  D2["Process definition: orchestrator@1<br/>immutable plan"]
+  B -. "pins" .-> D1
+  R -. "pins" .-> D2
+  C -- "contains" --> B
+  B -- "hosts" --> R
+  </script></div>
 
   <table>
-    <thead><tr><th>Entity</th><th>Exists to</th><th>Owns</th></tr></thead>
+    <thead><tr><th>Kind</th><th>Exists to</th><th>Owns</th><th>Dashboard example</th></tr></thead>
     <tbody>
-      <tr>
-        <td><strong>Blockie</strong></td>
-        <td>Be an inhabitant of the World.</td>
-        <td>Its identity, one Type, configuration, state.</td>
-      </tr>
-      <tr>
-        <td><strong>Composite</strong></td>
-        <td>Be an explicit assembly of other entities.</td>
-        <td>Membership edges, aliases, folds, optional manager, optional presentation.</td>
-      </tr>
-      <tr>
-        <td><strong>Run</strong></td>
-        <td>Be a long-lived, pausable activity.</td>
-        <td>Its own state, inbox, status, optional dispatch grant.</td>
-      </tr>
-      <tr>
-        <td><strong>Definitions</strong></td>
-        <td>Be immutable blueprints.</td>
-        <td>Nothing at runtime. They are pinned references.</td>
-      </tr>
+      <tr><td><strong>Blockie</strong></td><td>be an inhabitant of the World</td><td>identity, one Blueprint, config, Blockie state</td><td>button, counter 1, gauge</td></tr>
+      <tr><td><strong>Composite</strong></td><td>be an explicit assembly of other entities</td><td>membership edges, aliases, folds, optional manager, optional presentation</td><td>dashboard</td></tr>
+      <tr><td><strong>Run</strong></td><td>be a long-lived, pausable activity</td><td>its own state, inbox, status, optional dispatch grant</td><td>orchestrator</td></tr>
+      <tr><td><strong>Definitions</strong></td><td>be immutable plans</td><td>nothing at run time; they are pinned references</td><td><code>counter@1</code>, <code>orchestrator@1</code></td></tr>
     </tbody>
   </table>
 
-  <div class="callout">
-    <span class="label">Two definitions, not one</span>
-    <p>A <strong>Type package</strong> is a blueprint for a Blockie: its shape, ports, schemas, and
-    optional logic. A <strong>process definition</strong> is a blueprint for a Run: what it claims,
-    what it publishes, and how it steps. They are different artifacts with different jobs, which is
-    why they are not two kinds of one thing.</p>
-  </div>
+  <p>A useful analogy:</p>
+  <table>
+    <thead><tr><th>Kind</th><th>Analogy</th><th>Why it helps</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Blockie</strong></td><td>a noun</td><td>It is a thing you can point at and name.</td></tr>
+      <tr><td><strong>Composite</strong></td><td>a labelled box</td><td>It groups nouns, but it is not one of them.</td></tr>
+      <tr><td><strong>Run</strong></td><td>a verb, with a timesheet</td><td>It is an activity that can start, wait, and stop.</td></tr>
+      <tr><td><strong>Definition</strong></td><td>a recipe</td><td>It says how to make instances, but it is not one.</td></tr>
+    </tbody>
+  </table>
 
-  <h2>Identity</h2>
+  <h2 id="entity-vs-definition">Entity, definition, projection</h2>
+  <p>Three different things get called "a thing in the World". They are not the same:</p>
+
+  <table>
+    <thead><tr><th></th><th>Identity</th><th>Own state</th><th>In the document</th><th>Can change?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Blockie</strong></td><td>yes</td><td>yes, Blockie state</td><td>yes</td><td>state and config change</td></tr>
+      <tr><td><strong>Composite</strong></td><td>yes</td><td>no; membership and aliases are records</td><td>yes</td><td>membership and presentation change</td></tr>
+      <tr><td><strong>Run</strong></td><td>yes</td><td>yes, Run state</td><td>yes</td><td>state and status change</td></tr>
+      <tr><td><strong>Blueprint</strong></td><td>yes, by id and digest</td><td>no</td><td>published or embedded</td><td>never; a new version is a new definition</td></tr>
+      <tr><td><strong>Process definition</strong></td><td>yes, by id and digest</td><td>no</td><td>published or embedded</td><td>never; a new version is a new definition</td></tr>
+      <tr><td><strong>Occupancy, status</strong></td><td>no</td><td>no</td><td>no</td><td>computed from records</td></tr>
+    </tbody>
+  </table>
+
+  <p>The distinction that matters: a definition is not an instance. It has an identity so it can be
+  pinned, but it has no state and no lifecycle. A projection has neither identity nor storage; it is
+  a function of records that do.</p>
+
+  <h2 id="identity">Identity</h2>
   <p>Every entity has an <a class="term" href="../glossary.html#opaque-id">opaque identifier</a>.
   "Opaque" means the system never looks inside it: it is a string, and its only job is to be
   stable.</p>
@@ -69,25 +97,41 @@
     </ul>
   </div>
 
-  <p>Why so strict? Because almost every other guarantee depends on it. If an ID changed when a
-  Blockie moved into a Composite, every connection, every run, and every undo record would break.
-  If an ID were derived from a position, two agents editing the same World would disagree about
-  what they were editing.</p>
+  <p>A concrete test. Take <code>counter1</code> and do all of this to it:</p>
+  <ol>
+    <li>Move it from <code>(10, 10)</code> to <code>(200, 80)</code>.</li>
+    <li>Group it into <code>dashboard</code>.</li>
+    <li>Reparent it to a different Composite.</li>
+    <li>Attach a Run, then cancel the Run.</li>
+  </ol>
+  <p>Its ID stays <code>counter1</code>. Its Blueprint stays <code>counter@1</code>. Its state stays
+  <code>{ count: 3 }</code>. Only the placement, membership, and run records change. That is what
+  "identity survives" means in practice.</p>
 
   <h2 id="blockie">A Blockie, precisely</h2>
   <p>A Blockie has four fields. That is the entire entity.</p>
   <pre><code>Blockie {
-  id      an opaque identifier
-  type    a pinned Type package reference
-  config  typed configuration
-  state   typed Model State
+  id         an opaque identifier
+  blueprint  a pinned Blueprint reference
+  config     typed configuration
+  state      typed Blockie state
 }</code></pre>
 
   <p>Notice what is <em>not</em> there. No placement (it lives in its own table). No mode. No
   parent. No owner. No "is it running" flag. Each of those is either a separate record or a value
   computed from records that already exist.</p>
 
-  <h2>The mode question</h2>
+  <table>
+    <thead><tr><th>Question</th><th>Where the answer lives</th><th>Why not on the Blockie?</th></tr></thead>
+    <tbody>
+      <tr><td>Where is it?</td><td><code>placements</code> table</td><td>Placement is optional and separate from identity.</td></tr>
+      <tr><td>What is it part of?</td><td>membership edges on the Composite</td><td>Membership is a relation, not a property.</td></tr>
+      <tr><td>Is it busy?</td><td>derived from the run registry</td><td>A stored flag would get a second writer.</td></tr>
+      <tr><td>Who owns it?</td><td>nobody; authority is a grant</td><td>Ownership would imply access that the model does not grant.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="derived">Derived, not stored</h2>
   <p>Older drafts said a Blockie is in "drawing mode" or "computing mode". That is now
   <strong>derived</strong>, and the words are retired.</p>
 
@@ -104,53 +148,68 @@ flowchart LR
   V --> D2["display status<br/>done · cancelled · error · nothing"]
   </script></div>
 
-  <p>The <a href="processes.html">processes page</a> explains why "computing" was the wrong word:
-  a run that is queued or paused is not computing anything, yet it is still attached.</p>
+  <p>This is a general rule, not a special case. Occupancy, display status, availability, footprint,
+  attention, and run counts are all functions of stored records. None is stored. The
+  <a href="schema.html">document page</a> explains how the tables stay the only truth.</p>
 
-  <h2>Why there is no "Computer Blockie"</h2>
-  <p>An earlier design had Computer and Drawing Blockies as two primitive Types. It failed for a
-  reason worth internalising: <em>hosting an activity is not a kind of thing, it is a relationship
-  a thing can be in.</em> If you make it a Type, then a Blockie must change Type to start work,
-  which breaks identity, breaks its ports, and makes "what can this Blockie become" a question with
-  no answer.</p>
+  <h2 id="no-computer">Why there is no "Computer Blockie"</h2>
+  <p>An earlier design had Computer and Drawing Blockies as two primitive Blueprints. It failed for
+  a reason worth internalising: <em>hosting an activity is not a kind of thing, it is a relationship
+  a thing can be in.</em> If you make it a Blueprint, then a Blockie must switch Blueprint to start
+  work, which breaks identity, breaks its ports, and makes "what can this Blockie become" a question
+  with no answer.</p>
 
-  <p>The replacement is a rule: a Blockie's Type is stable, and it may host a Run subject to its
-  Type's declared permissions. The <a href="types.html">types page</a> covers those permissions.</p>
+  <p>The replacement is a rule: a Blockie's Blueprint is stable, and it may host a Run subject to the
+  ports and claims its Blueprint declares. The <a href="types.html">Blueprints page</a> covers those
+  permissions.</p>
 
-  <div class="card">
-    <h3>Terms on this page</h3>
-    <ul class="small">
-      <li><strong>Entity</strong> — a thing with identity that exists in its own right.</li>
-      <li><strong>Opaque identifier</strong> — a string the system never parses or derives.</li>
-      <li><strong>Pinned definition</strong> — a reference to one exact version and content digest,
-        so behaviour cannot change under you.</li>
-      <li><strong>Derived value</strong> — a value computed from stored records, never stored itself.</li>
-      <li><strong>Occupancy</strong> — whether a Blockie currently hosts an unfinished Run.</li>
-    </ul>
-  </div>
+  <h2 id="mistakes">Common mistakes</h2>
+  <ol>
+    <li><strong>Treating a Composite as a Blockie.</strong> It has no Blueprint, no state, no ports,
+    and no appearance of its own. It is a grouping with an alias table.</li>
+    <li><strong>Treating a Run as a function call.</strong> A Run has identity, state, and a
+    lifecycle. It can wait, be cancelled, and survive a restart. A reducer cannot.</li>
+    <li><strong>Deriving an ID from a name or position.</strong> Renaming or moving would break every
+    reference. IDs are opaque and stable.</li>
+    <li><strong>Storing occupancy.</strong> The registry already knows. Two records of the same fact
+    will eventually disagree.</li>
+    <li><strong>Thinking a definition is an instance.</strong> A Blueprint is a plan; a Blockie is
+    the thing made from it. A definition has no state.</li>
+  </ol>
 
   <section class="check">
     <h2>Check yourself</h2>
     <details>
-      <summary>Why does a Blockie have no "is running" field?</summary>
-      <p>Because the run registry already knows. Two records of the same fact will eventually
-      disagree, and then nothing can decide which is true. One authority, everything else derived.</p>
+      <summary>Is the dashboard an entity?</summary>
+      <p>Yes, a Composite is one of the four entity kinds. It has identity and membership, but it is
+      not a Blockie: no Blueprint, no state, no ports of its own.</p>
     </details>
     <details>
-      <summary>A Blockie moves from one Composite to another. What changes?</summary>
-      <p>Its membership edge and its placement scope. Not its ID, Type, state, ports, or any run
-      it hosts.</p>
+      <summary>Does <code>counter@1</code> have state?</summary>
+      <p>No. It is a definition: a plan. The state belongs to each Blockie that pins it. Two
+      counters share the Blueprint and have different state.</p>
     </details>
     <details>
-      <summary>Why can't an ID be derived from a template path?</summary>
-      <p>Because templates get edited and renamed. An ID derived from a path would change when the
-      template changed, which would break every reference to the instance.</p>
+      <summary>What happens to the ID when a Blockie moves into a Composite?</summary>
+      <p>Nothing. The membership edge and placement scope change; the ID, Blueprint, config, state,
+      and ports do not.</p>
+    </details>
+    <details>
+      <summary>Why is occupancy not a field on the Blockie?</summary>
+      <p>Because the run registry is authoritative for it. A second field would be a second writer,
+      and the two would eventually disagree. Derive it instead.</p>
+    </details>
+    <details>
+      <summary>Is a process definition an entity?</summary>
+      <p>It is one of the two definitions, and C-1 lists definitions among the four kinds. It has an
+      identity and a digest, but no runtime state and no lifecycle. It is a pinned plan, not an
+      inhabitant.</p>
     </details>
   </section>
 
   <div class="next">
-    <a href="../index.html">← Overview</a>
-    <a href="types.html">Next: types, state and ports →</a>
+    <a href="example.html">← The running example</a>
+    <a href="types.html">Next: Blueprints, state and ports →</a>
   </div>
 </main>
 <script src="../assets/vendor/pele.global.js"></script>

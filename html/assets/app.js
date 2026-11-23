@@ -6,8 +6,9 @@ const NAV = [
   {
     group: "Concepts",
     items: [
+      ["concepts/example.html", "The running example"],
       ["concepts/ontology.html", "Entities and identity"],
-      ["concepts/types.html", "Types, state, ports"],
+      ["concepts/types.html", "Blueprints, state, ports"],
       ["concepts/space.html", "Space and appearance"],
       ["concepts/composites.html", "Composites"],
       ["concepts/processes.html", "Processes"],
