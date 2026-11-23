@@ -6,7 +6,7 @@ deleted: the trail is the point.
 | ID | Decision | Status |
 |---|---|---|
 | D-001 | Grouping and instantiation are different operations | active |
-| D-002 | Run state is separate from host Model State | active |
+| D-002 | Run state is separate from host Blockie state | active |
 | D-003 | Composites may be static; two state dimensions (amended by D-018) | active |
 | D-004 | Explicit state, minimal implicit machines (with two bounds) | active |
 | D-005 | Every managed process is represented | **superseded by D-013** |
@@ -39,7 +39,7 @@ deleted: the trail is the point.
 | D-032 | Dispatch is not a Composite alias source | active |
 | D-033 | The dispatch endpoint is a grant, not a port | active |
 | D-034 | Absence encodes unplaced and dissolved | active |
-| D-035 | Composite presentation is a record, not a Type | active |
+| D-035 | Composite presentation is a record, not a Blueprint | active |
 | D-036 | Chrome is never interactive | active |
 | D-037 | A Composite's own appearance is static per revision | active |
 | D-038 | Members draw above the assembly; layer orders members | active |
@@ -83,7 +83,7 @@ flowchart LR
     IN -- "fork" --> GC
 ```
 
-## D-002 — Run state is separate from host Model State
+## D-002 — Run state is separate from host Blockie state
 
 The run never writes the host's state. It publishes through declared bindings; it reads through
 declared inputs. One writer per state, always.
@@ -96,14 +96,14 @@ flowchart LR
         RS --> RB
     end
     subgraph H["Host Blockie"]
-        HS["Model State"]
-        HR["Type reducer / compute"]
+        HS["Blockie state"]
+        HR["blueprint reducer / compute"]
         HP["Ports"]
         HR --> HS
     end
     HP -- "declared input" --> RB
     RB -- "declared output binding" --> HP
-    N["Prohibited: run writes<br/>host Model State"]
+    N["Prohibited: run writes<br/>host Blockie state"]
     RB -.- N
 ```
 
@@ -336,7 +336,7 @@ flowchart LR
 flowchart LR
     E["event delivery"] --> Q{"claimed by the run?"}
     Q -- "yes" --> IB["run inbox (F-03)"]
-    Q -- "no" --> RD["Type reducer"]
+    Q -- "no" --> RD["blueprint reducer"]
     IB --> PP["process phase"]
     RD --> EP["event phase"]
 ```
@@ -346,7 +346,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph V["value output ports"]
-        V1["producer: compute<br/>Type Compute only"]
+        V1["producer: compute<br/>blueprint compute only"]
         V2["producer: process<br/>attached run only"]
     end
     V2 --> U["no run attached<br/>status unavailable<br/>consumers blocked"]

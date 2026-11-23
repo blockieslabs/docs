@@ -57,7 +57,7 @@ flowchart LR
     <li><strong>Share memory with WASM.</strong> Values are offsets and lengths into one linear
     memory region, not copies. This is the difference between a microsecond and a millisecond for a
     large array.</li>
-    <li><strong>Use WASM for hot Types.</strong> A Type that runs on every cell or every frame is a
+    <li><strong>Use WASM for hot Blueprints.</strong> A Blueprint that runs on every cell or every frame is a
     SIMD kernel, not an interpreted function.</li>
   </ol>
 
@@ -158,7 +158,7 @@ flowchart LR
   week of history.</p>
   <p>The snapshot is chunked, so writing it is proportional to what changed since the last
   snapshot. The log and the archive compress well: entity records are highly repetitive, with the
-  same keys and the same Types, so zstd with a dictionary is a large win at low CPU cost.</p>
+  same keys and the same Blueprints, so zstd with a dictionary is a large win at low CPU cost.</p>
 
   <h3>Terminal runs are not hot</h3>
   <p>Occupancy only cares about non-terminal runs. But the registry retains every finished run for
@@ -185,7 +185,7 @@ flowchart LR
   <table>
     <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
     <tbody>
-      <tr><td>PF-053</td><td>step</td><td>QuickJS or Boa is 2–50× slower than a JIT on numeric code</td><td>T1</td><td>A</td><td>WASM for hot Types; optional JIT tier</td></tr>
+      <tr><td>PF-053</td><td>step</td><td>QuickJS or Boa is 2–50× slower than a JIT on numeric code</td><td>T1</td><td>A</td><td>WASM for hot Blueprints; optional JIT tier</td></tr>
       <tr><td>PF-054</td><td>step</td><td>A JS context is created per step</td><td>T1</td><td>I</td><td>Pool and reuse contexts</td></tr>
       <tr><td>PF-055</td><td>step</td><td>Modules parsed and compiled per use</td><td>T1</td><td>I</td><td>Content-addressed compile cache</td></tr>
       <tr><td>PF-056</td><td>step</td><td>Values marshalled as JSON or structured clone</td><td>T1</td><td>A</td><td>Binary ABI, typed arrays, shared memory</td></tr>
@@ -196,7 +196,7 @@ flowchart LR
       <tr><td>PF-061</td><td>step</td><td>Capabilities checked dynamically per call</td><td>T2</td><td>I</td><td>Check at attach, carry a bitset</td></tr>
       <tr><td>PF-062</td><td>step</td><td>WASM↔JS boundary crossed per value</td><td>T1</td><td>I</td><td>Batch calls; shared memory</td></tr>
       <tr><td>PF-063</td><td>step</td><td>Large values copied at every boundary</td><td>T2</td><td>A</td><td>Blob store, zero-copy views</td></tr>
-      <tr><td>PF-064</td><td>step</td><td>One sandbox per entity rather than per Type</td><td>T2</td><td>I</td><td>Share module and context pool per digest</td></tr>
+      <tr><td>PF-064</td><td>step</td><td>One sandbox per entity rather than per Blueprint</td><td>T2</td><td>I</td><td>Share module and context pool per digest</td></tr>
       <tr><td>PF-065</td><td>effect</td><td>Effect results arrive one per transaction, unordered per target</td><td>T2</td><td>A</td><td>Batch completions; per-target ordered outbox</td></tr>
     </tbody>
   </table>

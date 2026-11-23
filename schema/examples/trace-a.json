@@ -3,14 +3,14 @@
   "id": "world_trace_a",
   "frame": { "id": "frame_main", "space": "2d" },
   "definitions": {
-    "published": { "types": [], "processes": [] },
+    "published": { "blueprints": [], "processes": [] },
     "embedded": {
-      "types": [
+      "blueprints": [
         {
           "id": "org.example.pixel",
           "version": "1.0.0",
           "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "archetype": {
+          "appearance": {
             "geometry": "cell-1x1",
             "renderer": { "id": "org.example.render.pixel", "version": "1.0.0", "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111" }
           },
@@ -22,7 +22,7 @@
           "id": "org.example.computer",
           "version": "1.0.0",
           "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-          "archetype": {
+          "appearance": {
             "geometry": "cell-1x1",
             "renderer": { "id": "org.example.render.computer", "version": "1.0.0", "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222" }
           },
@@ -55,7 +55,7 @@
           "id": "org.example.lamp",
           "version": "1.0.0",
           "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-          "archetype": {
+          "appearance": {
             "geometry": "cell-1x1",
             "renderer": { "id": "org.example.render.lamp", "version": "1.0.0", "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }
           },
@@ -110,25 +110,25 @@
   "blockies": {
     "pixelA": {
       "id": "pixelA",
-      "type": { "id": "org.example.pixel", "version": "1.0.0", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      "blueprint": { "id": "org.example.pixel", "version": "1.0.0", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
       "config": {},
       "state": {}
     },
     "pixelB": {
       "id": "pixelB",
-      "type": { "id": "org.example.pixel", "version": "1.0.0", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      "blueprint": { "id": "org.example.pixel", "version": "1.0.0", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
       "config": {},
       "state": {}
     },
     "computerM": {
       "id": "computerM",
-      "type": { "id": "org.example.computer", "version": "1.0.0", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+      "blueprint": { "id": "org.example.computer", "version": "1.0.0", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
       "config": {},
       "state": {}
     },
     "lamp": {
       "id": "lamp",
-      "type": { "id": "org.example.lamp", "version": "1.0.0", "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+      "blueprint": { "id": "org.example.lamp", "version": "1.0.0", "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
       "config": {},
       "state": false
     }

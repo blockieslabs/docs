@@ -4,7 +4,7 @@
 **Status:** Proposed. Normative once ratified.
 **Derived from:** decisions 0001–0008, `architecture/fsm-inventory.md`, `schema/0001-minimal-model.md`.
 **Supersedes:** the v0.1 family's ontology (Composite-as-Blockie, `kind: atomic | composite`,
-Computer/Drawing as primitive Types).
+Computer/Drawing as primitive Blueprints).
 
 ## 1. Normative language
 
@@ -14,8 +14,8 @@ cited: `C-12` is a core requirement, not a section.
 ## 2. Scope and authority
 
 BCM defines **what exists** in a World, how it is identified, placed, and related, and which
-values are derived. It does not define execution (BPS) or Composite operations (BCS). Type
-expressions and value semantics are owned by the Blockies Type System; where the v0.1 BTS
+values are derived. It does not define execution (BPS) or Composite operations (BCS). Value type
+expressions and value semantics are owned by the Blockies Value Type System (BTS); where the v0.1 BTS
 conflicts with D-020 (typed value equality) and D-021 (staged resolution), this document and the
 decisions prevail.
 
@@ -24,7 +24,7 @@ decisions prevail.
 | Entities, identity, World document, placement, relationship definitions, derivations, invariants | BCM |
 | Run lifecycle, host contract, steps, scheduling, inbox, dispatch, failure classes | BPS |
 | Composite origins, membership operations, manager designation, aliases, folds, presentation | BCS |
-| Type expressions, values, assignability, equality | BTS + D-020 |
+| Value type expressions, values, assignability, equality | BTS + D-020 |
 | Document shape | `blockies-0.schema.json` |
 
 The schema defines shape; the specifications define meaning. Neither redefines the other.
@@ -32,21 +32,21 @@ The schema defines shape; the specifications define meaning. Neither redefines t
 ## 3. Entities
 
 **C-1.** A World contains exactly four kinds of first-class entity: **Blockie**, **Composite**,
-**Run**, and the two **definitions** (Type package, Process definition). Nothing else is an
+**Run**, and the two **definitions** (Blueprint, Process definition). Nothing else is an
 entity.
 
 **C-2.** A Blockie is a persistent, independently identifiable inhabitant with exactly one pinned
-Type, configuration, Model State, and an optional placement. A Blockie has no mode, no owner
+Blueprint, configuration, Blockie state, and an optional placement. A Blockie has no mode, no owner
 field, and no parent field: those are derived or stored elsewhere.
 
-**C-3.** A Composite is a grouping entity. It is not a Blockie, has no Type, and owns no ports. It
+**C-3.** A Composite is a grouping entity. It is not a Blockie, has no Blueprint, and owns no ports. It
 owns membership edges, an optional manager designation, an alias table, folds, and an optional
 presentation record.
 
 **C-4.** A Run is a first-class managed activity with its own identity and state, hosted by
 exactly one Blockie (BPS).
 
-**C-5.** A Type package is an immutable, digest-pinned blueprint: archetype, state and config
+**C-5.** A Blueprint is an immutable, digest-pinned plan: appearance, state and config
 schemas, ports, and optional logic. A Process definition is an immutable, digest-pinned
 executable contract (BPS).
 
@@ -164,20 +164,20 @@ ignoring unplaced members and unplaced subtrees.
 **C-32. Output availability.** A port with `producer: process` is unavailable when its host is
 vacant. Unavailability is never replaced by a default or a stale value.
 
-## 9. Type packages
+## 9. Blueprints
 
-**C-33.** A Type package declares an archetype (opaque geometry descriptor plus a renderer
+**C-33.** A Blueprint declares an appearance (opaque geometry descriptor plus a renderer
 package reference), state and config schemas with initial values, ports, and optional compute and
 reduce logic.
 
-**C-34.** Every port declares direction, kind, and a BTS type. A value output MAY declare
+**C-34.** Every port declares direction, kind, and a value type. A value output MAY declare
 `producer: compute | process`. An event input MAY declare `claimable: true`. Neither is legal
 anywhere else.
 
 **C-35.** A Blockie MUST NOT have more than one effective producer for any value output, and MUST
-NOT expose a port its Type does not declare.
+NOT expose a port its Blueprint does not declare.
 
-**C-36.** A Type package is immutable once published. Changing ports, schemas, logic, or
+**C-36.** A Blueprint is immutable once published. Changing ports, schemas, logic, or
 capabilities requires a new version. A World never silently resolves a different version.
 
 ## 10. Invariants
@@ -190,7 +190,7 @@ capabilities requires a new version. A World never silently resolves a different
 **C-42.** Every alias has exactly one source; alias chains terminate at a member port or a fold.
 **C-43.** A value output has exactly one effective producer; a value input has at most one.
 **C-44.** A Composite is never empty while assembled; removing the last member dissolves it.
-**C-45.** A Run never writes the World document and never writes its host's Model State.
+**C-45.** A Run never writes the World document and never writes its host's Blockie state.
 **C-46.** A terminal Run, the clearing of its manager designation, and the resulting output
 unavailability MUST commit in one generation.
 **C-47.** No connection addresses a member port from outside its owning Composite.
@@ -242,6 +242,6 @@ footprint rather than storing them; enforce C-37 through C-47; and pass the `sch
 
 ## 14. Not owned here
 
-Run execution and scheduling (BPS). Composite operations and interface semantics (BCS). Type
+Run execution and scheduling (BPS). Composite operations and interface semantics (BCS). Value type
 expressions, assignability, and equality (BTS + D-020). Document encoding for digesting — still
 open.

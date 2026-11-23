@@ -58,10 +58,10 @@
     },
     "Blockie": {
       "type": "object",
-      "required": ["id", "type", "config", "state"],
+      "required": ["id", "blueprint", "config", "state"],
       "properties": {
         "id": { "$ref": "#/$defs/Id" },
-        "type": { "$ref": "#/$defs/DefRef" },
+        "blueprint": { "$ref": "#/$defs/DefRef" },
         "config": { "$ref": "#/$defs/BtsValue" },
         "state": { "$ref": "#/$defs/BtsValue" }
       },
@@ -489,14 +489,14 @@
       },
       "additionalProperties": false
     },
-    "TypePackage": {
+    "Blueprint": {
       "type": "object",
-      "required": ["id", "version", "digest", "archetype", "state", "config", "ports"],
+      "required": ["id", "version", "digest", "appearance", "state", "config", "ports"],
       "properties": {
         "id": { "$ref": "#/$defs/Id" },
         "version": { "type": "string", "minLength": 1 },
         "digest": { "$ref": "#/$defs/Digest" },
-        "archetype": {
+        "appearance": {
           "type": "object",
           "required": ["geometry", "renderer"],
           "properties": {
@@ -594,18 +594,18 @@
       "properties": {
         "published": {
           "type": "object",
-          "required": ["types", "processes"],
+          "required": ["blueprints", "processes"],
           "properties": {
-            "types": { "type": "array", "items": { "$ref": "#/$defs/DefRef" } },
+            "blueprints": { "type": "array", "items": { "$ref": "#/$defs/DefRef" } },
             "processes": { "type": "array", "items": { "$ref": "#/$defs/DefRef" } }
           },
           "additionalProperties": false
         },
         "embedded": {
           "type": "object",
-          "required": ["types", "processes"],
+          "required": ["blueprints", "processes"],
           "properties": {
-            "types": { "type": "array", "items": { "$ref": "#/$defs/TypePackage" } },
+            "blueprints": { "type": "array", "items": { "$ref": "#/$defs/Blueprint" } },
             "processes": { "type": "array", "items": { "$ref": "#/$defs/ProcessDefinition" } }
           },
           "additionalProperties": false

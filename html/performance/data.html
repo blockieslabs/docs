@@ -151,11 +151,11 @@ flowchart TB
   contiguous scan instead of a chain of hash lookups. This is also what makes a fold over ten
   thousand members vectorisable.</p>
 
-  <h3>Archetypes for Type dispatch</h3>
-  <p>Group entities by Type so a renderer or a compute kernel sees one contiguous block per Type.
+  <h3>Archetypes for blueprint dispatch</h3>
+  <p>Group entities by Blueprint so a renderer or a compute kernel sees one contiguous block per Blueprint.
   This removes a branch or virtual call per entity and makes the kernel's input layout
   predictable. It is the same idea as an entity-component-system archetype, without changing the
-  ontology: the Type is already the grouping key.</p>
+  ontology: the Blueprint is already the grouping key.</p>
 
   <h2 id="identity">Identity is an index, not a string</h2>
   <p>IDs are opaque, stable, unique and never reused (C-7–C-10). They are not required to be
@@ -175,7 +175,7 @@ flowchart TB
     sorted by integer rank, satisfies the same rule in <code>O(k log k)</code> per bucket.</p>
   </div>
 
-  <p>Port names repeat everywhere: every Blockie of a Type has the same ports. A global symbol
+  <p>Port names repeat everywhere: every Blockie of a Blueprint has the same ports. A global symbol
   table with integer symbols turns port lookup into an array index, and makes subset checks
   (P-3's <code>claims ⊆ claimable</code>) a few bitwise operations.</p>
 

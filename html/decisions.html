@@ -12,12 +12,20 @@
 <main>
   <p class="crumb"><a href="index.html">Blockies</a> / Reference</p>
   <h1>Decision log</h1>
-  <p class="lede">Forty-five decisions, each recording what was chosen and why. The log is
+  <p class="lede">Forty-six decisions, each recording what was chosen and why. The log is
   append-only: a later decision supersedes an earlier one, it never rewrites it.</p>
 
   <p>Read a decision as: <em>what changed</em>, and <em>what would have gone wrong otherwise</em>.
   Two are superseded and kept deliberately, because the trail explains why the final answer is what
   it is.</p>
+
+  <div class="callout">
+    <span class="label">Vocabulary note</span>
+    <p>D-046 renamed the words. This page uses the current terms: <strong>Blueprint</strong> for the
+    old "Type package", <strong>value type</strong> for a BTS type, <strong>appearance</strong> for
+    "archetype", and <strong>Blockie state</strong> for "Model State". The source decisions keep
+    their historical words.</p>
+  </div>
 
   <div class="callout">
     <span class="label">How to use this page</span>
@@ -36,7 +44,7 @@
   </div>
 
   <div class="dec" id="d-002"><span class="id">D-002</span> <span class="badge">active</span>
-    <h3>Run state is separate from host Model State</h3>
+    <h3>Run state is separate from host Blockie state</h3>
     <p>Otherwise one Blockie has two writers and "what is the value" depends on timing.
     <a href="concepts/processes.html">Processes</a></p>
   </div>
@@ -119,9 +127,9 @@
   </div>
 
   <div class="dec" id="d-035"><span class="id">D-035</span> <span class="badge">active</span>
-    <h3>Composite presentation is a record, not a Type</h3>
-    <p>A Composite has no Type, so it carries a label, an optional renderer package, and an optional
-    body member. Never styling, never a hidden Type.
+    <h3>Composite presentation is a record, not a Blueprint</h3>
+    <p>A Composite has no Blueprint, so it carries a label, an optional renderer package, and an optional
+    body member. Never styling, never a hidden definition.
     <a href="concepts/space.html">Space</a></p>
   </div>
 
@@ -154,7 +162,7 @@
   <div class="dec" id="d-017"><span class="id">D-017</span> <span class="badge">active</span>
     <h3>Host output ports declare their producer</h3>
     <p>Compute or process, never both, and an unattached process port is unavailable rather than
-    stale. <a href="concepts/types.html">Types</a></p>
+    stale. <a href="concepts/types.html">Blueprints</a></p>
   </div>
 
   <div class="dec" id="d-029"><span class="id">D-029</span> <span class="badge">active</span>
@@ -177,7 +185,7 @@
 
   <div class="dec" id="d-040"><span class="id">D-040</span> <span class="badge">active</span>
     <h3>The step context includes configuration, never host state</h3>
-    <p>Configuration is declared and construction-shaped; Model State changes under the reducer and
+    <p>Configuration is declared and construction-shaped; Blockie state changes under the reducer and
     would have no dependency edge. <a href="concepts/processes.html">Processes</a></p>
   </div>
 
@@ -312,6 +320,17 @@
     <h3>The file holder is not governed by policy</h3>
     <p>Whoever opens a World can edit it, including its policy. This is a multi-party session model,
     not a sandbox for untrusted documents. <a href="concepts/relationships.html">Relationships</a></p>
+  </div>
+
+  <h2>Vocabulary</h2>
+
+  <div class="dec" id="d-046"><span class="id">D-046</span> <span class="badge">active</span>
+    <h3>Blueprint, value type, appearance, Blockie state</h3>
+    <p>"Type" was doing two jobs: the plan for a Blockie and the shape of a value. The plan is now a
+    <strong>Blueprint</strong>; a BTS type is a <strong>value type</strong>; an archetype is an
+    <strong>appearance</strong>; Model State is <strong>Blockie state</strong>. The decision log
+    keeps the old words; living documents use the new ones.
+    <a href="concepts/types.html">Blueprints</a></p>
   </div>
 
   <h2>Validation</h2>

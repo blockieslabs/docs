@@ -65,7 +65,7 @@ resumes in a later transaction. This is the mechanism that makes "a whole progra
 | Projection | Queue depth, oldest item age (drives the "why is it not responding" view) |
 
 Only event inputs claimed by the run's host contract enter the inbox (D-016). An unclaimed input
-goes to the Type reducer and never appears here.
+goes to the blueprint reducer and never appears here.
 
 ### F-04 — Run Attachment
 
@@ -314,7 +314,7 @@ This is what terminal-status dialects mean by `done`. It is not run status: a ru
 ## User-declared FSMs (proposal)
 
 If "everything that can be a state is a state" is to hold for user programs too, the state
-machine should be a first-class declared construct in Type and Process Definitions, not an
+machine should be a first-class declared construct in Blueprint and Process Definitions, not an
 enum scattered through user code:
 
 ```

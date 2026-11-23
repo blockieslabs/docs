@@ -7,6 +7,10 @@ legacy family.
 **Method:** every decision checked against every other decision, against the inventory, and
 against the handoff invariant it amends.
 
+> **Vocabulary note (2026-11-23).** This review is a historical record and keeps the words in use
+> when it was written. D-046 renamed "Type package" to **Blueprint**, "BTS type" to **value type**,
+> "archetype" to **appearance**, and "Model State" to **Blockie state**. Translate on first use.
+
 ## Verdict
 
 The ontology holds. No finding reverses the entity/relationship model, and no two decisions

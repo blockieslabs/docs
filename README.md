@@ -12,22 +12,24 @@ document says so in its header.
 
 1. [`decisions/0001-foundations.md`](decisions/0001-foundations.md) — the ontology and the
    decisions taken on 2026-11-14. Start here.
-2. [`architecture/layers.md`](architecture/layers.md) — the seven-layer stack, and what each
+2. [`decisions/0011-naming.md`](decisions/0011-naming.md) — D-046, the vocabulary: Blueprint,
+   value type, appearance, Blockie state. Read this before the specifications.
+3. [`architecture/layers.md`](architecture/layers.md) — the seven-layer stack, and what each
    layer may and may not do.
-3. [`architecture/fsm-inventory.md`](architecture/fsm-inventory.md) — every state machine in
+4. [`architecture/fsm-inventory.md`](architecture/fsm-inventory.md) — every state machine in
    the system, its owner, and the level it latches onto.
-4. [`specs/BCM-core-model.md`](specs/BCM-core-model.md),
+5. [`specs/BCM-core-model.md`](specs/BCM-core-model.md),
    [`specs/BPS-process.md`](specs/BPS-process.md),
    [`specs/BCS-composite.md`](specs/BCS-composite.md) — the normative model, requirements
    numbered `C-n`, `P-n`, `S-n` so they can be cited.
-5. [`traces/0001-reference-traces.md`](traces/0001-reference-traces.md) — four scenarios as
+6. [`traces/0001-reference-traces.md`](traces/0001-reference-traces.md) — four scenarios as
    transaction logs. These are the golden vectors.
-6. [`schema/0001-minimal-model.md`](schema/0001-minimal-model.md) — the derived model, with a
+7. [`schema/0001-minimal-model.md`](schema/0001-minimal-model.md) — the derived model, with a
    traceability table and a list of what was deliberately cut.
-7. [`schema/blockies-0.schema.json`](schema/blockies-0.schema.json) and
+8. [`schema/blockies-0.schema.json`](schema/blockies-0.schema.json) and
    [`schema/0002-conformance-fixtures.md`](schema/0002-conformance-fixtures.md) — the machine
    schema and the fixture vectors.
-8. [`performance/0001-bottleneck-analysis.md`](performance/0001-bottleneck-analysis.md) — where a
+9. [`performance/0001-bottleneck-analysis.md`](performance/0001-bottleneck-analysis.md) — where a
    conforming implementation will be slow, by layer, with the technique that removes each cost.
 
 ## What is still missing
@@ -50,7 +52,7 @@ levels; a repository should be created only when a level has something to build.
 | A1 | `blockieslabs/core` | Rust document model, validator, transaction engine (WASM-capable) |
 | A2 | `blockieslabs/adapters` | Script engines, effect executor, simulation services |
 | A3 | `blockieslabs/host` | Session loop, persistence, views, grants |
-| A4 | `blockieslabs/render` | Renderers and Type renderer packages |
+| A4 | `blockieslabs/render` | Renderers and renderer packages |
 | A5 | `blockieslabs/clients` | CLI, TUI, web, native, mobile |
 | A6 | `blockieslabs/operators` | Agent adapters, package sources |
 

@@ -19,7 +19,7 @@ phases is defined here; document transactions are BCS.
 
 **P-1.** A Process definition is immutable and digest-pinned. It declares:
 
-- `stateType`: the BTS type of the run's own state;
+- `stateType`: the value type of the run's own state;
 - `host`: `claims`, `reads`, `publishes`;
 - `step`: runtime, module digest, export;
 - `wake`: the wait conditions the run may use;
@@ -28,16 +28,16 @@ phases is defined here; document transactions are BCS.
 **P-2.** A definition MUST NOT declare capabilities. Capabilities are granted by the World or the
 host, never by the definition.
 
-**P-3.** `claims` MUST be a subset of the host Type's claimable event inputs. `publishes` MUST be a
-subset of the host Type's `producer: process` value outputs. `reads` MUST be a subset of the host
-Type's value inputs. Violations are rejected at attach, not at run time.
+**P-3.** `claims` MUST be a subset of the host Blueprint's claimable event inputs. `publishes` MUST be a
+subset of the host Blueprint's `producer: process` value outputs. `reads` MUST be a subset of the host
+Blueprint's value inputs. Violations are rejected at attach, not at run time.
 
 ## 4. Runs
 
 **P-4.** A Run has: identity, host Blockie, definition reference, status, optional wait condition,
 acknowledgement, optional parent Run, its own state, an inbox, and an optional dispatch grant.
 
-**P-5.** Run state is owned by the Run. It is never the host's Model State and is never written by
+**P-5.** Run state is owned by the Run. It is never the host's Blockie state and is never written by
 the host's reducer or compute.
 
 **P-6.** A Run's state MUST validate against `stateType` after every step. An invalid state is a
@@ -78,7 +78,7 @@ from parentage.
 resolves and its digest matches; P-3 holds; the World policy permits the run; and, if a manager
 designation is part of the same transaction, the host is a direct member of that Composite.
 
-**P-13.** Attachment MUST NOT change the host's Type, state, configuration, or placement.
+**P-13.** Attachment MUST NOT change the host's Blueprint, state, configuration, or placement.
 
 **P-14.** A Blockie hosts at most one active Run (C-37). A second attachment is rejected.
 
@@ -107,7 +107,7 @@ both emit in one transaction, event-phase emissions enqueue before process-phase
 
 **P-21.** A step receives exactly: its own state, the host's configuration (read-only), the
 resolved values of its `reads` ports, its inbox items, and its grant if any. It does not receive
-host Model State, host ports outside `reads`, other entities, or ambient environment. A
+host Blockie state, host ports outside `reads`, other entities, or ambient environment. A
 configuration change takes effect at the next step and does not wake a Run.
 
 **P-22.** A step returns: `state` (required), and optionally `publish`, `dispatch`, `wait`, and

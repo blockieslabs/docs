@@ -265,7 +265,7 @@ flowchart TB
       <tr><td>PF-037</td><td>transaction</td><td>Recovery rehydrates and validates everything eagerly</td><td>T2</td><td>A</td><td>Snapshot plus WAL replay; lazy rehydration</td></tr>
       <tr><td>PF-038</td><td>generation</td><td>Every view receives a full generation</td><td>T2</td><td>A</td><td>Per-view deltas, keyframes, sharing</td></tr>
       <tr><td>PF-039</td><td>generation</td><td>Commit serialises the whole document</td><td>T1</td><td>A</td><td>Incremental serialisation; log-structured store</td></tr>
-      <tr><td>PF-040</td><td>transaction</td><td>Run state validated after every step by a generic validator</td><td>T2</td><td>A</td><td>Compiled per-Type validator</td></tr>
+      <tr><td>PF-040</td><td>transaction</td><td>Run state validated after every step by a generic validator</td><td>T2</td><td>A</td><td>Compiled per-blueprint validator</td></tr>
       <tr><td>PF-041</td><td>transaction</td><td>Attach scans port lists for subset checks</td><td>T2</td><td>I</td><td>Interned port IDs and bitsets</td></tr>
       <tr><td>PF-042</td><td>transaction</td><td>Dispatch scans <code>memberSet</code></td><td>T2</td><td>I</td><td>Immutable hash set or sorted array</td></tr>
       <tr><td>PF-043</td><td>transaction</td><td>Designation copies the member set on every change</td><td>T3</td><td>I</td><td>Persistent immutable set</td></tr>

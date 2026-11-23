@@ -48,7 +48,7 @@ flowchart TB
       <tr><td>Dense generational handles</td><td><code>u32</code> index plus generation; no string hashing, safe deletion</td><td>PF-006, PF-007, PF-020, PF-050, PF-112</td></tr>
       <tr><td>String interning</td><td>One canonical string, integer symbols everywhere</td><td>PF-007, PF-050, PF-111</td></tr>
       <tr><td>CSR adjacency</td><td>Contiguous edge lists per node</td><td>PF-012, PF-112</td></tr>
-      <tr><td>ECS archetypes</td><td>Group by Type; contiguous, branch-free iteration</td><td>PF-085, PF-111, PF-113</td></tr>
+      <tr><td>ECS archetypes</td><td>Group by Blueprint; contiguous, branch-free iteration</td><td>PF-085, PF-111, PF-113</td></tr>
       <tr><td>Hot/cold splitting</td><td>Separate frequently read fields from blobs</td><td>PF-006, PF-111</td></tr>
       <tr><td>Tagged unions and varints</td><td>Compact values, no boxing</td><td>PF-046, PF-048, PF-111</td></tr>
       <tr><td>Arenas and bump allocators</td><td>Allocate per transaction, free in bulk</td><td>PF-048, PF-118</td></tr>
@@ -147,7 +147,7 @@ flowchart TB
     <thead><tr><th>Technique</th><th>What it does</th><th>Findings</th></tr></thead>
     <tbody>
       <tr><td>Instancing</td><td>One draw call for many copies</td><td>PF-083, PF-085</td></tr>
-      <tr><td>Batching by material or Type</td><td>Fewer state changes</td><td>PF-083, PF-085</td></tr>
+      <tr><td>Batching by material or Blueprint</td><td>Fewer state changes</td><td>PF-083, PF-085</td></tr>
       <tr><td>Indirect draw</td><td>The GPU decides what to draw</td><td>PF-083, PF-091</td></tr>
       <tr><td>Texture atlas</td><td>One bind for many sprites</td><td>PF-083, PF-094</td></tr>
       <tr><td>SDF fonts and glyph atlas</td><td>Cheap text at any scale</td><td>PF-088</td></tr>
@@ -187,7 +187,7 @@ flowchart TB
   <table>
     <thead><tr><th>Cache</th><th>Key</th><th>Invalidated by</th><th>Findings</th></tr></thead>
     <tbody>
-      <tr><td>Compiled validator</td><td>Type digest</td><td>never (immutable)</td><td>PF-016, PF-040</td></tr>
+      <tr><td>Compiled validator</td><td>blueprint digest</td><td>never (immutable)</td><td>PF-016, PF-040</td></tr>
       <tr><td>Compiled module</td><td>Definition digest</td><td>never</td><td>PF-055, PF-119</td></tr>
       <tr><td>Context pool</td><td>Definition digest</td><td>session end</td><td>PF-054, PF-064</td></tr>
       <tr><td>Resolved alias table</td><td>Composite id and generation</td><td>membership or alias change</td><td>PF-010</td></tr>
@@ -197,7 +197,7 @@ flowchart TB
       <tr><td>Visible set</td><td>View id and generation</td><td>viewport or World change</td><td>PF-067, PF-091</td></tr>
       <tr><td>Capability bitset</td><td>Principal, scope and policy revision</td><td>policy or membership change</td><td>PF-069</td></tr>
       <tr><td>Text layout</td><td>String, style and size</td><td>style change</td><td>PF-088</td></tr>
-      <tr><td>Renderer resolution</td><td>Type digest</td><td>never</td><td>PF-093</td></tr>
+      <tr><td>Renderer resolution</td><td>blueprint digest</td><td>never</td><td>PF-093</td></tr>
       <tr><td>Blob</td><td>Content digest</td><td>never</td><td>PF-063, PF-094</td></tr>
       <tr><td>Decoded asset</td><td>Content digest</td><td>never</td><td>PF-104</td></tr>
     </tbody>
@@ -240,7 +240,7 @@ flowchart TB
       <tr><td>A2</td><td>boundary bytes per step</td><td>bounded by the step contract</td></tr>
       <tr><td>A3</td><td>publish bytes per view per generation</td><td>delta, not full state</td></tr>
       <tr><td>A3</td><td>view lag in generations</td><td>bounded; <code>catching_up</code> visible</td></tr>
-      <tr><td>A4</td><td>draw calls per frame</td><td>one per archetype, not per entity</td></tr>
+      <tr><td>A4</td><td>draw calls per frame</td><td>one per appearance, not per entity</td></tr>
       <tr><td>A4</td><td>frame time p99 at target <code>N</code></td><td>16.6 ms at 60 Hz</td></tr>
       <tr><td>A5</td><td>time to first frame</td><td>snapshot plus delta, not full parse</td></tr>
       <tr><td>A6</td><td>tokens per observation</td><td>projection, not the World</td></tr>

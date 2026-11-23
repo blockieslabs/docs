@@ -20,7 +20,7 @@ off the runtimes. Five problems:
 4. **Missing: views.** The presenter/audience scenario needs two views of one World with
    different visibility and different interaction grants. That is not a client feature.
 5. **Missing: operators, packages, effects.** Agents are the primary users of the platform;
-   Type packages are where the vocabulary comes from; effects are how the outside world gets
+   Blueprints are where the vocabulary comes from; effects are how the outside world gets
    in. None of the three appears in the sketch.
 
 ## The stack
@@ -30,7 +30,7 @@ A6  Operators        humans · AI agents · automation · package sources
       |
 A5  Clients          CLI · TUI · web · native desktop · mobile        (thin)
       |
-A4  Presentation     renderers · Type renderer packages · LOD · interaction translation
+A4  Presentation     renderers · renderer packages · LOD · interaction translation
       |
 A3  Host & Session   authoritative loop · sessions/views · grants · persistence · sync adapter
       |
@@ -89,7 +89,7 @@ is not a second World. Audience interaction is a command submitted under the vie
 
 Renderers consume committed generations only. Two distinct plugin surfaces live here:
 
-- **Type renderer packages** — how a given Type draws itself. One Type, many renderers
+- **renderer packages** — how a given Blueprint draws itself. One Blueprint, many renderers
   (spreadsheet cell, dashboard tile, presentation slide).
 - **View composition** — layout, level-of-detail, aggregation of runs, animation.
 
@@ -106,7 +106,7 @@ Humans, AI agents, automation. An agent is an operator of the World: it issues a
 commands and events. If it needs an in-world body, it gets a representative Blockie and a
 Process Run — which are not the same identity as the agent.
 
-Package sources also live here: where Type packages, process definitions, and composite
+Package sources also live here: where Blueprints, process definitions, and composite
 definitions come from.
 
 ## Process execution and the transaction
@@ -143,13 +143,13 @@ contract is `step(snapshot) → { state, outputs, effects, wait? }` plus a budge
   mapping (Decimal as a canonical string plus SDK helpers, DateTime as an RFC 3339 string,
   Bytes as base64url) — never silent conversion to JS `number`.
 - **WASM** as a second adapter: it is how Rust/C-authored Blockies, physics, and
-  performance-sensitive Types plug in without a native ABI.
+  performance-sensitive Blueprints plug in without a native ABI.
 - **Lua** only if a specific audience needs it. Do not build it speculatively; the adapter
   contract makes it cheap to add later, which is the point.
 
 Plugin system follows from the two surfaces:
 
-- **Computation plugins** are Type/Process Definitions plus a JS or WASM module. Capability-
+- **Computation plugins** are Blueprint/Process Definitions plus a JS or WASM module. Capability-
   gated, digest-pinned, sandboxed.
 - **Presentation plugins** are renderer packages, versioned against a renderer contract.
 - **Never native dynamic libraries.** They break the sandbox, the portability story, and the
@@ -161,7 +161,7 @@ Plugin system follows from the two surfaces:
 |---|---|---|
 | Presentation with presenter + audience views, audience voting | One World, N views, per-view grants, committed-generation consistency, attributed commands | A3 (views, grants), A4 (two renders), A1 (one World) |
 | Developer visualising code as process flow | Process parentage as a first-class visible structure; step traces; state-flow rendering | A1 (runs), A4 (flow renderer), F-01/F-02 |
-| Students brainstorming with UI + pixel Blockies | Cheap reactive compute at spreadsheet scale (no process per cell); editable UI Types; animation driven by values | A1 (compute), A4 (UI Type, animation), A0 (UI Type package) |
+| Students brainstorming with UI + pixel Blockies | Cheap reactive compute at spreadsheet scale (no process per cell); editable UI Blueprints; animation driven by values | A1 (compute), A4 (UI Blueprint, animation), A0 (UI Blueprint) |
 | Spreadsheet replacement | Ranges and aggregation without shared state or a process per formula | **Gap** — see below |
 | Physics and 3D | Space-agnostic placement; simulation as an adapter that publishes, never writes; 3D as renderer + spatial capability | A0/A1 (placement schema), A2 (simulation), A4 (3D renderer) |
 
@@ -193,5 +193,5 @@ classic way to lose a year.
 2. No extension may write World state; extensions publish, the core commits.
 3. Every state that matters appears in the FSM inventory with an owner.
 4. Entity kinds do not proliferate. Computer and Drawing Blockie were the failure mode; a new
-   *kind* of thing needs an argument that a Type, a relationship, or a mode cannot express it.
+   *kind* of thing needs an argument that a Blueprint, a relationship, or a mode cannot express it.
 5. Values cross boundaries; references do not.

@@ -26,8 +26,8 @@ type World = {
   id: Id;
   frame: Frame;
   definitions: {
-    published: DefRef[];          // registry references (D-028)
-    embedded: Definition[];       // authored inside this World (D-028)
+    published: { blueprints: DefRef[]; processes: DefRef[] };   // registry references (D-028)
+    embedded: { blueprints: Blueprint[]; processes: ProcessDefinition[] };  // authored here
   };
   blockies: Record<Id, Blockie>;
   composites: Record<Id, Composite>;
@@ -47,7 +47,7 @@ Two registries, not one map with a discriminator. The entity kinds meet only thr
 ```ts
 type Blockie = {
   id: Id;
-  type: DefRef;
+  blueprint: DefRef;
   config: BtsValue;
   state: BtsValue;
 };
@@ -73,7 +73,7 @@ type Composite = {
 
 type CompositePresentation = {
   label: string;
-  renderer?: DefRef;          // a renderer package, not a Type
+  renderer?: DefRef;          // a renderer package, not a Blueprint
   body?: EntityRef;           // a direct member that stands for the assembly
 };
 
@@ -201,14 +201,14 @@ type WakeCondition =
   | { reason: "human"; kind: "permission" | "question" | "auth" };
 ```
 
-## Type package
+## Blueprint
 
 ```ts
-type TypePackage = {
+type Blueprint = {
   id: Id;
   version: string;
   digest: Digest;
-  archetype: { geometry: string; renderer: DefRef };
+  appearance: { geometry: string; renderer: DefRef };
   state: { type: BtsType; initial: BtsValue };
   config: { type: BtsType; defaults: BtsValue };
   ports: Port[];

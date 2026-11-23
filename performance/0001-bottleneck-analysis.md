@@ -22,7 +22,7 @@ Two rules govern every recommendation:
 
 D-011 named nine levers: batch transactions, recompute only the dirty closure, suppress
 unchanged values, memoise compute, share snapshot structure, flatten Composite boundaries,
-parallelise independent nodes, make the sandbox call coarse, and use WASM for hot Types. Those
+parallelise independent nodes, make the sandbox call coarse, and use WASM for hot Blueprints. Those
 levers cover the value graph. They do not cover identity, document layout, persistence,
 publishing, views, rendering, or operators. This document covers all of it and keeps D-011's
 levers as the spine.
@@ -43,7 +43,7 @@ levers as the spine.
 | `V` | Live views or sessions |
 | `D` | Containment depth |
 | `W` | World document size in bytes |
-| `P` | Ports per Type |
+| `P` | Ports per Blueprint |
 | `M` | Members per Composite |
 
 ### 2.2 Constants
@@ -158,7 +158,7 @@ implementation (avoidable by choosing a different representation).
 | PF-013 | transaction | Acyclicity is checked with a fresh DFS per membership operation (C-40, S-8) | T2 | A | Dynamic topological order, or a single check per bulk operation |
 | PF-014 | world | All three validation passes run over the whole document on every load and commit (C-48) | T2 | A | Full validation at load, delta validation per transaction, periodic full sweep |
 | PF-015 | world | Sparse tables and absence encoding force iteration over holes (C-13, C-20) | T2 | I | Dense index plus presence bitmap; tombstones only for identity retention |
-| PF-016 | world | Type and state schemas are interpreted per check rather than compiled (C-33, C-51) | T1 | I | Compile each schema to a predicate or a bytecode validator once per digest |
+| PF-016 | world | Blueprint and state schemas are interpreted per check rather than compiled (C-33, C-51) | T1 | I | Compile each schema to a predicate or a bytecode validator once per digest |
 | PF-017 | transaction | Structural assignability is recomputed for ports that did not change (S-23, P-3) | T2 | I | Cache the resolved type relation keyed by (source digest, target digest) |
 | PF-018 | frame | Views iterate unplaced and backstage entities they can never draw (C-20, D-008) | T2 | I | Placement presence bitmap plus a `stage` bitset; query only the intersection |
 | PF-019 | world | Terminal runs are retained forever and every scan pays for them (C-9, C-10, F-22) | T2 | A | Separate the active-run index from the cold archive; hot paths read `Rₐ` only |
@@ -177,8 +177,8 @@ implementation (avoidable by choosing a different representation).
 | PF-027 | transaction | Step budgets are checked per instruction or with wall-clock calls (P-23, P-31) | T2 | I | Deterministic fuel counting at basic-block boundaries; epoch interruption |
 | PF-028 | transaction | Stabilisation iterates to a fixpoint over the whole graph instead of following a topological order (P-27, D-011) | T1 | A | Precomputed topological order plus a dirty-closure worklist |
 | PF-029 | transaction | Compute is memoised by hashing all inputs, which can cost more than the compute (D-011) | T2 | I | Revision counters and version vectors; hash only at the boundary |
-| PF-030 | transaction | The equality gate performs deep comparison on every edge (D-011) | T1 | A | Canonical value hash, interning, identity fast path, per-Type equality |
-| PF-031 | transaction | The sandbox is called once per graph node (D-011) | T2 | A | Fuse nodes of one Type into one kernel call; compile the graph |
+| PF-030 | transaction | The equality gate performs deep comparison on every edge (D-011) | T1 | A | Canonical value hash, interning, identity fast path, per-value type equality |
+| PF-031 | transaction | The sandbox is called once per graph node (D-011) | T2 | A | Fuse nodes of one Blueprint into one kernel call; compile the graph |
 | PF-032 | transaction | Values cross the adapter boundary by structured clone (D-027) | T2 | A | Shared linear memory, typed arrays, handles; zero-copy where the engine allows |
 | PF-033 | transaction | Every inbox append is durable before the transaction continues (F-03, P-45) | T1 | A | Append-only WAL with group commit; buffer and batch `fsync` |
 | PF-034 | transaction | At-least-once delivery keeps an unbounded dedup set (P-45) | T2 | A | Per-run monotonic sequence plus a bounded dedup window; Bloom filter front |
@@ -187,7 +187,7 @@ implementation (avoidable by choosing a different representation).
 | PF-037 | transaction | Recovery rehydrates and validates every run and definition eagerly (P-43, P-44) | T2 | A | Snapshot plus WAL replay; lazy rehydration; parallel validation of independent chunks |
 | PF-038 | generation | Every view receives a full generation, not a delta (F-09, F-13) | T2 | A | Per-view delta streams, keyframes, structural sharing, compression |
 | PF-039 | generation | Commit serialises the whole document for storage or hashing (open item) | T1 | A | Incremental serialisation of dirty entities; log-structured storage; periodic compaction |
-| PF-040 | transaction | Run state is validated against `stateType` after every step with a generic validator (P-6) | T2 | A | Compiled per-Type validator; validate only the changed shape where the type allows |
+| PF-040 | transaction | Run state is validated against `stateType` after every step with a generic validator (P-6) | T2 | A | Compiled per-blueprint validator; validate only the changed shape where the type allows |
 | PF-041 | transaction | Attach re-checks `claims`/`publishes`/`reads` by scanning port lists (P-3) | T2 | I | Interned port IDs plus bitset subset tests |
 | PF-042 | transaction | Dispatch validates the target by scanning `memberSet` (P-37, S-14) | T2 | I | Immutable hash set or sorted array with binary search |
 | PF-043 | transaction | Designation copies the member set; every membership change copies it again (P-38, S-14) | T3 | I | Persistent immutable set shared across epochs; copy-on-write |
@@ -205,7 +205,7 @@ implementation (avoidable by choosing a different representation).
 
 | ID | Scope | Finding | Trigger | Class | Primary technique |
 |---|---|---|---|---|---|
-| PF-053 | step | QuickJS or Boa interprets user steps 2–50× slower than a JIT for numeric code (D-027) | T1 | A | WASM for hot Types; optional JIT tier; bytecode caching |
+| PF-053 | step | QuickJS or Boa interprets user steps 2–50× slower than a JIT for numeric code (D-027) | T1 | A | WASM for hot Blueprints; optional JIT tier; bytecode caching |
 | PF-054 | step | A JS context or isolate is created per step (D-027) | T1 | I | Pool and reuse contexts; one isolate per World; cheap state reset |
 | PF-055 | step | Modules are parsed and compiled per use instead of per digest (D-027) | T1 | I | Content-addressed compile cache; AOT WASM; V8 code cache |
 | PF-056 | step | Values are marshalled as JSON or structured clone at every boundary (D-027) | T1 | A | Binary ABI, typed arrays, shared memory, handle tables |
@@ -216,7 +216,7 @@ implementation (avoidable by choosing a different representation).
 | PF-061 | step | Capabilities are checked dynamically on every call (P-2, D-018) | T2 | I | Check at attach, carry a capability bitset in the call frame |
 | PF-062 | step | The WASM↔JS boundary is crossed per value rather than per batch (D-027) | T1 | I | Batch calls, shared memory, one call per node or per layer |
 | PF-063 | step | Large values (bytes, images) are copied at every boundary | T2 | A | Blob store with references; zero-copy views; streaming |
-| PF-064 | step | One sandbox instance per entity rather than per Type | T2 | I | Share compiled module and context pool per definition digest |
+| PF-064 | step | One sandbox instance per entity rather than per Blueprint | T2 | I | Share compiled module and context pool per definition digest |
 | PF-065 | effect | Effect results arrive one per transaction and are not ordered per target (F-11) | T2 | A | Batch completions into one transaction; per-target ordered outbox |
 
 ### 4.4 A3 — Host and session
@@ -245,9 +245,9 @@ implementation (avoidable by choosing a different representation).
 
 | ID | Scope | Finding | Trigger | Class | Primary technique |
 |---|---|---|---|---|---|
-| PF-083 | frame | One draw call per Blockie | T1 | I | Instancing, batching by Type, texture atlas, indirect draw |
+| PF-083 | frame | One draw call per Blockie | T1 | I | Instancing, batching by Blueprint, texture atlas, indirect draw |
 | PF-084 | frame | The scene graph is traversed and transforms recomputed every frame (C-17) | T1 | A | Retained dirty flags, flat world-space arrays, GPU transform where possible |
-| PF-085 | frame | Renderer plugin dispatch is per entity and crosses a boundary per entity (A4) | T2 | A | Batch by renderer/archetype; SoA instance buffers; one call per batch |
+| PF-085 | frame | Renderer plugin dispatch is per entity and crosses a boundary per entity (A4) | T2 | A | Batch by renderer/appearance; SoA instance buffers; one call per batch |
 | PF-086 | frame | Animation objects are allocated per value change (A4) | T2 | I | Retained animation slots, springs, GPU interpolation, pooling |
 | PF-087 | frame | DOM rendering creates one node per Blockie | T2 | I | Canvas/WebGL/WebGPU; virtualise; transform-only CSS |
 | PF-088 | frame | Text is shaped and laid out per label per frame | T2 | I | Glyph atlas, SDF fonts, cache keyed by (string, style, size) |
@@ -255,7 +255,7 @@ implementation (avoidable by choosing a different representation).
 | PF-090 | input | Hit testing scans every Blockie (S-40) | T2 | I | Spatial index, BVH, GPU ID buffer, broadphase then narrowphase |
 | PF-091 | frame | View culling recomputes visibility over all entities per view (D-007) | T2 | A | Quadtree/BVH query, cached visible sets, GPU culling |
 | PF-092 | frame | Composite chrome and bounds are recomputed every frame (S-36, S-42) | T2 | I | Cached AABB with dirty propagation |
-| PF-093 | frame | Renderer resolution is looked up per entity per frame (F-18) | T2 | I | Cache per Type; preload; fallback renderer |
+| PF-093 | frame | Renderer resolution is looked up per entity per frame (F-18) | T2 | I | Cache per Blueprint; preload; fallback renderer |
 | PF-094 | world | Large blobs are inlined in the document (BTS bytes) | T2 | A | Content-addressed blob store; references; lazy decode; texture compression |
 | PF-095 | frame | The renderer busy-polls at 60 Hz while commits are sparse | T2 | I | On-demand rendering, dirty frame flag, vsync alignment |
 | PF-096 | frame | Layout thrash from interleaved DOM reads and writes | T2 | I | Batch reads then writes; `requestAnimationFrame`; offscreen measurement |
@@ -290,7 +290,7 @@ implementation (avoidable by choosing a different representation).
 |---|---|---|---|---|---|
 | PF-111 | entity | Entities are arrays of structs, so iterating one field touches every field | T1 | I | SoA columns, hot/cold splitting, ECS archetypes |
 | PF-112 | entity | Graph edges are ID references followed by hash lookup | T1 | I | Dense indices, CSR adjacency, BFS ordering for locality |
-| PF-113 | entity | Type and kind dispatch is a branch or virtual call per entity | T2 | I | Sort by Type, jump tables, archetype tables, profile-guided layout |
+| PF-113 | entity | Blueprint and kind dispatch is a branch or virtual call per entity | T2 | I | Sort by Blueprint, jump tables, ECS archetype tables, profile-guided layout |
 | PF-114 | entity | Scalar loops miss vectorisation in transforms, AABB union, folds, culling, physics | T2 | I | SIMD (AVX2/NEON/WASM SIMD), SoA, alignment, branch-free loops |
 | PF-115 | world | Content and value hashing uses a general-purpose or weak hash | T2 | I | BLAKE3/xxHash for content; 64-bit fingerprints with collision check |
 | PF-116 | world | Storage and network payloads are uncompressed | T2 | I | zstd/lz4 with a shared dictionary; delta encoding |
@@ -344,9 +344,9 @@ Three separate costs hide in that loop:
    worklist is a bitset plus a stack; only dirty nodes are visited. Most transactions touch a
    handful of nodes.
 3. **Equality by fingerprint first.** Give every value a cached canonical hash (PF-005). Compare
-   hashes; only on a hash match do a deep compare, and only if the Type's equality is not
+   hashes; only on a hash match do a deep compare, and only if the Blueprint's equality is not
    identity. For interned values, pointer equality is the fast path.
-4. **Fuse per Type.** Compile the subgraph of one Type into one kernel call over SoA columns
+4. **Fuse per Blueprint.** Compile the subgraph of one Blueprint into one kernel call over SoA columns
    (PF-031, PF-111). A spreadsheet column of 10k cells becomes one call, not 10k.
 5. **Cut off early.** If a node's output fingerprint is unchanged, do not mark its consumers.
    This is the single largest win on stable graphs.
@@ -472,7 +472,7 @@ proportional to everything, not to what changed.
   that is behind asks for a keyframe or a range of deltas. Structural sharing means the delta
   can reference immutable values rather than copying them.
 - **Compress at rest and on the wire.** zstd with a trained dictionary for entity records; the
-  records are highly repetitive (same keys, same Types).
+  records are highly repetitive (same keys, same Blueprints).
 
 **Must not break.** C-13 (absence is not null) and C-14 (derived values are not stored). A
 chunk is a storage detail; it must not become a place where occupancy or status is persisted.
@@ -558,8 +558,8 @@ SoA. The difference is a cache miss per entity: 100 ns × 10k = 1 ms, per pass, 
 - **CSR for edges.** Membership, connections and aliases are adjacency lists in compressed sparse
   row form: one `offsets: Vec<u32>` and one `targets: Vec<u32>`. Iterating a Composite's members
   is a contiguous scan, not a chain of hash lookups.
-- **Archetypes for Type dispatch.** Group entities by Type so a renderer or a compute kernel sees
-  one contiguous block per Type. This removes the branch per entity (PF-113) and makes the
+- **ECS archetypes for blueprint dispatch.** Group entities by Blueprint so a renderer or a compute kernel sees
+  one contiguous block per Blueprint. This removes the branch per entity (PF-113) and makes the
   kernel's input layout predictable.
 - **Keep JSON at the edge.** The document is parsed into this layout at load and projected back
   at save. The schema is unchanged.
@@ -591,7 +591,7 @@ Opaque IDs are required; *random* IDs are not.
 - **Sort per arrival epoch, not globally.** P-29 orders runs that become ready *at the same
   point*. A FIFO of buckets, each sorted by rank, satisfies it in `O(k log k)` per bucket rather
   than `O(R log R)` per transaction.
-- **Perfect hashing for well-known ports.** Port names come from Type packages and repeat
+- **Perfect hashing for well-known ports.** Port names come from Blueprints and repeat
   everywhere. A global symbol table with `u32` symbols makes port lookup an array index.
 
 **Must not break.** C-8: an ID must not be derived from position, name, or path. A counter is
@@ -622,7 +622,7 @@ compositions. Doing it per entity per frame is `O(N·D)`. At `D = 10` and `N = 1
 - **Spatial index is free.** Because geometry is semantically inert (C-23), the index can be
   approximate, rebuilt, LOD-specific, or GPU-resident without affecting any trace. Build one
   BVH or quadtree per generation, share it across views, and query it per view.
-- **Hit testing uses the same index.** Broadphase by AABB, narrowphase by the Type's archetype.
+- **Hit testing uses the same index.** Broadphase by AABB, narrowphase by the Blueprint's appearance.
   Only Blockies are tested (S-40), so Composite chrome never enters the candidate set.
 - **SIMD the batch.** Uniform scale plus translation is a 2D affine transform: four multiplies
   and four adds per entity, perfect for SIMD over 8 entities at a time. AABB union is `min`/`max`
@@ -666,7 +666,7 @@ that is 3 seconds of setup per second of work.
 - **Keep the ABI narrow.** Pass handles and primitive arrays; do not serialise the World. The
   step contract already limits inputs to state, config, reads, inbox and grant (P-21), which is
   a small, fixed shape. Design the ABI around that shape rather than around a generic value tree.
-- **WASM for hot Types.** A Type that runs on every cell or every frame is a WASM kernel with
+- **WASM for hot Blueprints.** A Blueprint that runs on every cell or every frame is a WASM kernel with
   SIMD, not an interpreted JS function. D-027 already allows this.
 
 **Must not break.** Determinism (no ambient time or randomness), capability gating (P-2), and
@@ -709,7 +709,7 @@ invalidated in the same transaction.
 
 ### 5.11 Rendering — PF-083, PF-084, PF-085, PF-088, PF-089
 
-**What the architecture says.** Renderers consume committed generations (A4). A Type may have
+**What the architecture says.** Renderers consume committed generations (A4). A Blueprint may have
 many renderers. Animation is presentation and never changes a value. LOD aggregates runs into an
 ancestor indicator (D-008).
 
@@ -725,8 +725,8 @@ Text is the worst. A dashboard of 10k labels cannot shape text per label per fra
 
 **Fix.**
 
-- **Instance by archetype.** One instanced draw per (Type, renderer, material). Instance data is
-  a SoA buffer: position, scale, colour, texture index. A Type with 10k instances is one call.
+- **Instance by appearance.** One instanced draw per (Blueprint, renderer, material). Instance data is
+  a SoA buffer: position, scale, colour, texture index. A Blueprint with 10k instances is one call.
 - **Retained transforms.** Only dirty subtrees recompute (5.8). The renderer reads a flat array.
 - **Batch by renderer, not by entity.** The plugin boundary is crossed once per batch. A
   renderer package receives an array of instances, not one call per Blockie.
@@ -855,7 +855,7 @@ Reverse lookup: given a technique, which findings does it address?
 | Dense generational handles | `u32` index + generation; no string hashing, safe deletion | PF-006, PF-007, PF-020, PF-050, PF-112 |
 | String interning / symbol table | One canonical string, integer symbols everywhere | PF-007, PF-050, PF-111 |
 | CSR adjacency | Contiguous edge lists per node | PF-012, PF-112 |
-| ECS archetypes | Group by Type; contiguous, branch-free iteration | PF-085, PF-111, PF-113 |
+| ECS archetypes | Group by Blueprint; contiguous, branch-free iteration | PF-085, PF-111, PF-113 |
 | Hot/cold splitting | Separate frequently read fields from blobs | PF-006, PF-111 |
 | Tagged unions / varints | Compact values, no boxing | PF-046, PF-048, PF-111 |
 | Arenas / bump allocators | Allocate per transaction, free in bulk | PF-048, PF-118 |
@@ -949,7 +949,7 @@ Reverse lookup: given a technique, which findings does it address?
 | Technique | What it does | Findings |
 |---|---|---|
 | Instancing | One draw call for many copies | PF-083, PF-085 |
-| Batching by material/Type | Fewer state changes | PF-083, PF-085 |
+| Batching by material/Blueprint | Fewer state changes | PF-083, PF-085 |
 | Indirect draw | GPU decides what to draw | PF-083, PF-091 |
 | Texture atlas | One bind for many sprites | PF-083, PF-094 |
 | SDF fonts + glyph atlas | Cheap text at any scale | PF-088 |
@@ -982,7 +982,7 @@ Reverse lookup: given a technique, which findings does it address?
 
 | Cache | Key | Invalidated by | Findings |
 |---|---|---|---|
-| Compiled validator | Type digest | Never (immutable) | PF-016, PF-040 |
+| Compiled validator | blueprint digest | Never (immutable) | PF-016, PF-040 |
 | Compiled module | Definition digest | Never | PF-055, PF-119 |
 | Context pool | Definition digest | Session end | PF-054, PF-064 |
 | Resolved alias table | Composite id + generation | Membership/alias change | PF-010 |
@@ -992,7 +992,7 @@ Reverse lookup: given a technique, which findings does it address?
 | Visible set | View id + generation | Viewport or World change | PF-067, PF-091 |
 | Capability bitset | (principal, scope) + policy revision | Policy/membership change | PF-069 |
 | Text layout | (string, style, size) | Style change | PF-088 |
-| Renderer resolution | Type digest | Never | PF-093 |
+| Renderer resolution | blueprint digest | Never | PF-093 |
 | Blob | Content digest | Never | PF-063, PF-094 |
 | Decoded asset | Content digest | Never | PF-104 |
 
@@ -1035,7 +1035,7 @@ and hard to fake.
 | A2 | boundary bytes per step | bounded by the step contract |
 | A3 | publish bytes per view per generation | delta, not full state |
 | A3 | view lag in generations | bounded; `catching_up` visible |
-| A4 | draw calls per frame | one per archetype, not per entity |
+| A4 | draw calls per frame | one per appearance, not per entity |
 | A4 | frame time p99 at target `N` | 16.6 ms at 60 Hz |
 | A5 | time to first frame | snapshot + delta, not full parse |
 | A6 | tokens per observation | projection, not the World |

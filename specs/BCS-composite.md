@@ -36,8 +36,8 @@ publishing a new definition version.
 **S-4.** A grouping containing an ad-hoc nested Composite MUST be saved recursively: each nested
 grouping becomes its own definition. A save that would produce a recursive definition is rejected.
 
-**S-5.** Save-as captures structure, member Type references, initial configuration, the alias
-table, folds, and presentation. It MUST NOT capture Model State, run state, or member identities.
+**S-5.** Save-as captures structure, member blueprint references, initial configuration, the alias
+table, folds, and presentation. It MUST NOT capture Blockie state, run state, or member identities.
 
 ## 4. Membership
 
@@ -71,7 +71,7 @@ MUST be occupied by an active Run (C-41).
 exactly one capability: `composite.dispatch`, bounded by a `memberSet` materialised from the
 Composite's direct members.
 
-**S-15.** A manager MUST NOT add, remove, move, or reparent members; read member Model State,
+**S-15.** A manager MUST NOT add, remove, move, or reparent members; read member Blockie state,
 configuration, or nested internals; cancel a member's Run; or write any part of the document,
 including presentation.
 
@@ -207,6 +207,6 @@ runtime vectors RT-A-2 and RT-D-1.
 
 ## 14. Not owned here
 
-Run execution (BPS). Entity identity and placement mathematics (BCM). Type semantics (BTS).
+Run execution (BPS). Entity identity and placement mathematics (BCM). blueprint semantics (BTS).
 Instantiation of nested definitions beyond the recursive save rule (deferred: conditional nodes,
 repeated nodes, hot-swap).

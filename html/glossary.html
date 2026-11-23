@@ -25,14 +25,18 @@
     <dd>A public name on a Composite that points at a member's port or at a fold. It has no state,
       which is why a Composite needs no ports of its own. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
 
+    <dt id="appearance">appearance</dt>
+    <dd>A Blueprint's visual identity: a shape descriptor plus the renderer package that draws it.
+      <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
+
     <dt id="archetype">archetype</dt>
-    <dd>A Type's visual identity: a shape descriptor plus the renderer package that draws it.
-      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+    <dd>Former name for <a href="#appearance">appearance</a>. Kept as an alias so older links
+      resolve.</dd>
 
     <dt id="assignability">assignability</dt>
     <dd>Whether every value a source type can produce is accepted by a target type. Directional:
       <code>integer</code> is assignable to <code>number</code>, not the reverse.
-      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+      <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="attention">attention</dt>
     <dd>What is being watched. Derived from session scopes and from a Run's declared input bindings;
@@ -63,23 +67,23 @@
       only committed generations. <span class="see">→ <a href="concepts/runtime.html">Runtime</a></span></dd>
 
     <dt id="composite">Composite</dt>
-    <dd>An explicit assembly of Blockies and nested Composites. Not a Blockie, not a Type, no ports
+    <dd>An explicit assembly of Blockies and nested Composites. Not a Blockie, not a Blueprint, no ports
       of its own. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
 
     <dt id="compute">compute</dt>
     <dd>A pure function that turns state, configuration, and inputs into output values. Cannot change
-      state or emit events. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+      state or emit events. <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="configuration">configuration</dt>
-    <dd>Typed, author-edited settings belonging to a Blockie. Distinct from Model State, which only
-      its reducer changes. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+    <dd>Typed, author-edited settings belonging to a Blockie. Distinct from Blockie state, which only
+      its reducer changes. <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="coordinate-scope">coordinate scope</dt>
     <dd>The thing a position is measured relative to: the Frame, or an owning Composite.
       <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
 
     <dt id="definition">definition</dt>
-    <dd>An immutable blueprint. Two kinds: a Type package (for Blockies) and a process definition
+    <dd>An immutable definition. Two kinds: a Blueprint (for Blockies) and a process definition
       (for Runs). <span class="see">→ <a href="concepts/ontology.html">Entities</a></span></dd>
 
     <dt id="derived">derived value</dt>
@@ -88,7 +92,7 @@
 
     <dt id="digest">digest</dt>
     <dd>A content hash that pins an exact version of a definition, so behaviour cannot change
-      underneath a World. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+      underneath a World. <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="dispatch">dispatch</dt>
     <dd>A manager's ability to send an addressed event to one member, chosen from a declared member
@@ -116,7 +120,7 @@
       undeclared. A fold is the declared form. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
 
     <dt id="fan-out">fan-out</dt>
-    <dd>One output to many inputs. Always allowed. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+    <dd>One output to many inputs. Always allowed. <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="fold">fold</dt>
     <dd>A declared aggregation over a set of member value outputs: sum, count, min, max, collect.
@@ -163,9 +167,10 @@
     <dd>The explicit fact that an entity is directly inside a Composite. Never inferred from
       proximity or appearance. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
 
-    <dt id="model-state">Model State</dt>
-    <dd>Persistent data owned by a Blockie, changed only by its own reducer.
-      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+    <dt id="model-state">Blockie state</dt>
+    <dd>Persistent data owned by a Blockie, changed only by its own reducer. Formerly called
+      <em>Model State</em>.
+      <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="occupancy">occupancy</dt>
     <dd>Whether a Blockie currently hosts an unfinished Run. Derived from the registry, never stored.
@@ -189,15 +194,15 @@
 
     <dt id="port">port</dt>
     <dd>A typed socket on a Blockie: a direction and a kind (value or event).
-      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+      <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="principal">principal</dt>
     <dd>The acting identity a host issues to a session. Never a World entity.
       <span class="see">→ <a href="concepts/relationships.html">Relationships</a></span></dd>
 
     <dt id="producer">producer</dt>
-    <dd>The one thing allowed to write a value output: the Type's compute, or an attached Run.
-      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+    <dd>The one thing allowed to write a value output: the Blueprint's compute, or an attached Run.
+      <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="provenance">provenance</dt>
     <dd>Where a membership edge came from: an ad-hoc grouping or a specific template node.
@@ -205,14 +210,14 @@
 
     <dt id="pure">pure</dt>
     <dd>Same inputs, same outputs, no side effects. No clock, no randomness, no network.
-      <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+      <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="reducer">reducer</dt>
     <dd>A pure function that takes state, configuration, and one event, and returns the complete next
-      state plus any actions. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+      state plus any actions. <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="renderer-package">renderer package</dt>
-    <dd>A drawing-only plugin. Not a Type: it has no ports, state, or logic.
+    <dd>A drawing-only plugin. Not a Blueprint: it has no ports, state, or logic.
       <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
 
     <dt id="repair">repair</dt>
@@ -224,7 +229,7 @@
       exactly one Blockie. <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
 
     <dt id="run-state">run state</dt>
-    <dd>The state owned by a Run. Separate from the host Blockie's Model State, so there is only ever
+    <dd>The state owned by a Run. Separate from the host Blockie's Blockie state, so there is only ever
       one writer. <span class="see">→ <a href="concepts/processes.html">Processes</a></span></dd>
 
     <dt id="staging">staging</dt>
@@ -247,17 +252,27 @@
     <dd>Translation plus uniform scale. No rotation, because rotation with non-uniform scale cannot
       compose losslessly. <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
 
-    <dt id="type-package">Type package</dt>
-    <dd>The immutable blueprint for a Blockie: archetype, state and config schemas, ports, optional
-      logic. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+    <dt id="type-package">Blueprint</dt>
+    <dd>The immutable plan for a Blockie: appearance, state and config schemas, ports, optional
+      logic. Formerly called a <em>Type package</em>.
+      <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="unplaced">unplaced</dt>
     <dd>Having no placement record: exists, is not drawn, contributes no footprint.
       <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
 
+    <dt id="bts">BTS</dt>
+    <dd>The Blockies Value Type System: the closed set of value types (primitives, records, arrays,
+      unions) and their assignability and equality rules. See <a href="#value-type">value type</a>.</dd>
+
+    <dt id="value-type">value type</dt>
+    <dd>A BTS type: the shape of a value, such as <code>integer</code>, a record, an array, or a
+      union. The schema calls it <code>BtsType</code>.
+      <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
+
     <dt id="value-event">value vs event</dt>
     <dd>A value is the latest information; an event is a discrete occurrence. An event cannot be
-      modelled as a value that stays true. <span class="see">→ <a href="concepts/types.html">Types</a></span></dd>
+      modelled as a value that stays true. <span class="see">→ <a href="concepts/types.html">Blueprints</a></span></dd>
 
     <dt id="wait-condition">wait condition</dt>
     <dd>What must happen before a Run continues: an inbox item, a value change, a timer, a human

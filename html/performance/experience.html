@@ -28,13 +28,13 @@ flowchart LR
     E3["entity 3"] --> D3["draw call"]
   end
   subgraph NEW["instanced"]
-    B["batch by Type<br/>and material"] --> D4["one instanced draw"]
+    B["batch by Blueprint<br/>and material"] --> D4["one instanced draw"]
     D4 --> G["GPU"]
   end
   </script></div>
 
-  <p>Instance by archetype. One instanced draw per Type, renderer and material. Instance data is a
-  SoA buffer: position, scale, colour, texture index. A Type with ten thousand instances is one
+  <p>Instance by appearance. One instanced draw per Blueprint, renderer and material. Instance data is a
+  SoA buffer: position, scale, colour, texture index. A Blueprint with ten thousand instances is one
   call. A texture atlas removes the bind changes between instances.</p>
 
   <table>
@@ -62,7 +62,7 @@ flowchart LR
   touches per-entity data.</p>
 
   <p>Hit testing uses the same index. Only Blockies are hit-tested (S-40), so Composite chrome
-  never enters the candidate set. Broadphase by AABB, narrowphase by the Type's archetype. A
+  never enters the candidate set. Broadphase by AABB, narrowphase by the Blueprint's appearance. A
   pointer move should not scan ten thousand entities.</p>
 
   <div class="callout good">
@@ -124,9 +124,9 @@ flowchart LR
   <table>
     <thead><tr><th>Finding</th><th>What it costs</th><th>Technique</th></tr></thead>
     <tbody>
-      <tr><td>PF-111 AoS layout</td><td>iterating one field touches every field</td><td>SoA columns, hot/cold split, archetypes</td></tr>
+      <tr><td>PF-111 AoS layout</td><td>iterating one field touches every field</td><td>SoA columns, hot/cold split, ECS archetypes</td></tr>
       <tr><td>PF-112 pointer chasing</td><td>one cache miss per graph edge</td><td>dense handles, CSR, BFS ordering</td></tr>
-      <tr><td>PF-113 branch mispredict</td><td>5–15 ns per entity on Type dispatch</td><td>sort by Type, jump tables, archetypes</td></tr>
+      <tr><td>PF-113 branch mispredict</td><td>5–15 ns per entity on blueprint dispatch</td><td>sort by Blueprint, jump tables, ECS archetypes</td></tr>
       <tr><td>PF-114 missed SIMD</td><td>4–16× left on the table in transforms, folds, culling</td><td>SIMD, SoA, alignment, branch-free loops</td></tr>
       <tr><td>PF-115 weak hashing</td><td>collisions and slow content hashes</td><td>BLAKE3 or xxHash; 64-bit fingerprints</td></tr>
       <tr><td>PF-116 no compression</td><td>storage and bandwidth multiply</td><td>zstd or lz4 with a dictionary</td></tr>
@@ -146,7 +146,7 @@ flowchart LR
     <tbody>
       <tr><td>PF-083</td><td>frame</td><td>One draw call per Blockie</td><td>T1</td><td>I</td><td>Instancing, batching, atlas, indirect draw</td></tr>
       <tr><td>PF-084</td><td>frame</td><td>Scene traversed and transforms recomputed every frame</td><td>T1</td><td>A</td><td>Retained dirty flags, flat world-space arrays</td></tr>
-      <tr><td>PF-085</td><td>frame</td><td>Renderer dispatch per entity crosses a boundary</td><td>T2</td><td>A</td><td>Batch by renderer and archetype</td></tr>
+      <tr><td>PF-085</td><td>frame</td><td>Renderer dispatch per entity crosses a boundary</td><td>T2</td><td>A</td><td>Batch by renderer and appearance</td></tr>
       <tr><td>PF-086</td><td>frame</td><td>Animation objects allocated per value change</td><td>T2</td><td>I</td><td>Retained slots, springs, pooling</td></tr>
       <tr><td>PF-087</td><td>frame</td><td>One DOM node per Blockie</td><td>T2</td><td>I</td><td>Canvas or WebGL; virtualise; transform-only CSS</td></tr>
       <tr><td>PF-088</td><td>frame</td><td>Text shaped and laid out per label per frame</td><td>T2</td><td>I</td><td>Glyph atlas, SDF, layout cache</td></tr>
@@ -154,7 +154,7 @@ flowchart LR
       <tr><td>PF-090</td><td>input</td><td>Hit testing scans every Blockie</td><td>T2</td><td>I</td><td>Spatial index, BVH, GPU ID buffer</td></tr>
       <tr><td>PF-091</td><td>frame</td><td>View culling recomputed over all entities per view</td><td>T2</td><td>A</td><td>Quadtree or BVH, cached visible sets</td></tr>
       <tr><td>PF-092</td><td>frame</td><td>Composite chrome and bounds recomputed every frame</td><td>T2</td><td>I</td><td>Cached AABB with dirty propagation</td></tr>
-      <tr><td>PF-093</td><td>frame</td><td>Renderer resolution looked up per entity per frame</td><td>T2</td><td>I</td><td>Cache per Type, preload, fallback</td></tr>
+      <tr><td>PF-093</td><td>frame</td><td>Renderer resolution looked up per entity per frame</td><td>T2</td><td>I</td><td>Cache per Blueprint, preload, fallback</td></tr>
       <tr><td>PF-094</td><td>world</td><td>Large blobs inlined in the document</td><td>T2</td><td>A</td><td>Blob store, references, lazy decode</td></tr>
       <tr><td>PF-095</td><td>frame</td><td>Renderer busy-polls while commits are sparse</td><td>T2</td><td>I</td><td>On-demand rendering, dirty frame flag</td></tr>
       <tr><td>PF-096</td><td>frame</td><td>Layout thrash from interleaved DOM reads and writes</td><td>T2</td><td>I</td><td>Batch reads then writes; offscreen measurement</td></tr>
@@ -193,9 +193,9 @@ flowchart LR
   <table>
     <thead><tr><th>ID</th><th>Scope</th><th>Finding</th><th>Trigger</th><th>Class</th><th>Fix</th></tr></thead>
     <tbody>
-      <tr><td>PF-111</td><td>entity</td><td>Entities are arrays of structs</td><td>T1</td><td>I</td><td>SoA, hot/cold split, archetypes</td></tr>
+      <tr><td>PF-111</td><td>entity</td><td>Entities are arrays of structs</td><td>T1</td><td>I</td><td>SoA, hot/cold split, ECS archetypes</td></tr>
       <tr><td>PF-112</td><td>entity</td><td>Graph edges are ID references plus hash lookup</td><td>T1</td><td>I</td><td>Dense indices, CSR, BFS ordering</td></tr>
-      <tr><td>PF-113</td><td>entity</td><td>Type dispatch is a branch per entity</td><td>T2</td><td>I</td><td>Sort by Type, jump tables, archetypes</td></tr>
+      <tr><td>PF-113</td><td>entity</td><td>blueprint dispatch is a branch per entity</td><td>T2</td><td>I</td><td>Sort by Blueprint, jump tables, ECS archetypes</td></tr>
       <tr><td>PF-114</td><td>entity</td><td>Scalar loops miss vectorisation</td><td>T2</td><td>I</td><td>SIMD, SoA, alignment, branch-free loops</td></tr>
       <tr><td>PF-115</td><td>world</td><td>Content and value hashing uses a weak hash</td><td>T2</td><td>I</td><td>BLAKE3 or xxHash; 64-bit fingerprints</td></tr>
       <tr><td>PF-116</td><td>world</td><td>Storage and network payloads are uncompressed</td><td>T2</td><td>I</td><td>zstd or lz4 with a dictionary</td></tr>
