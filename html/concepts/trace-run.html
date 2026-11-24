@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The manager's tick · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
+  <h1 id="trace-run">The manager's tick</h1>
+  <p class="lede">A reducer finishes inside a transaction. A Run is the other half: an inbox, a
+  process phase, and a lifecycle that can end in one atomic commit.</p>
+
+  <div class="callout">
+    <span class="label">Running example</span>
+    <p>This is the <a href="example.html">dashboard</a> again, now with the manager Run attached.
+    The manager Blockie hosts <code>orchestrator</code>; the Run claims <code>on_tick</code>, reads
+    <code>count</code>, and publishes <code>status</code>. The counter and the gauge are unchanged
+    from the previous trace.</p>
+  </div>
+
+  <h2 id="starting-point">The starting point</h2>
+  <p>Transaction A has already attached the Run. It is <code>queued</code> and has not stepped yet,
+  so no process value has been published.</p>
+
+  <table>
+    <thead><tr><th>Row</th><th>Value at generation N</th></tr></thead>
+    <tbody>
+      <tr><td><code>runs.orchestrator.status</code></td><td><code>queued</code></td></tr>
+      <tr><td><code>runs.orchestrator.state</code></td><td><code>{ "ticks": 0, "last": "" }</code></td></tr>
+      <tr><td><code>runs.orchestrator.inbox</code></td><td><code>[]</code></td></tr>
+      <tr><td><code>runs.orchestrator.grant</code></td><td><code>{ "composite": "dashboard", "memberSet": [...] }</code></td></tr>
+      <tr><td><code>composites.dashboard.manager</code></td><td><code>{ "run": "orchestrator", "epoch": 1 }</code></td></tr>
+      <tr><td><code>blockies.manager.state</code></td><td><code>{}</code></td></tr>
+      <tr><td><code>blockies.manager.config</code></td><td><code>{ "interval": 60 }</code></td></tr>
+      <tr><td><code>manager.on_tick</code></td><td>claimable event input, claimed by the Run</td></tr>
+      <tr><td><code>manager.status</code></td><td>process value output, no value published yet</td></tr>
+      <tr><td><code>counter1.count</code></td><td><code>1</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>The manager is a direct member of the dashboard, which is why it can be designated. The
+  designation and the grant are two different records: the designation is on the Composite, the
+  grant is on the Run.</p>
+
+  <h2 id="tick">The tick</h2>
+  <div class="mermaid"><script type="text/plain">
+sequenceDiagram
+  participant K as clock
+  participant M as manager Blockie
+  participant R as orchestrator Run
+  participant V as view
+  K->>M: deliver on_tick
+  M->>R: append to inbox (claimed)
+  R->>R: step: consume inbox
+  R->>R: ticks = 1, count = 1 (resolved)
+  R->>R: last = "ok"
+  R->>M: publish status = "ok"
+  R->>R: wait timer 60s
+  M-->>V: generation N+1
+  </script></div>
+
+  <p>The delivery never reaches the manager's reducer. The input is claimed by the Run, so it goes
+  to the Run's inbox; that is the exclusivity rule from the processes page.</p>
+
+  <h2 id="phases">Phase by phase</h2>
+  <table>
+    <thead><tr><th>#</th><th>Phase</th><th>What happens</th><th>State after</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>accept</td><td>the clock delivers to <code>manager.on_tick</code>; the Run's claim is resolved</td><td>unchanged</td></tr>
+      <tr><td>2</td><td>validate</td><td>the payload <code>{}</code> matches; the Run is active</td><td>unchanged</td></tr>
+      <tr><td>3</td><td>stage</td><td>the delivery is appended to the inbox</td><td>inbox has one item</td></tr>
+      <tr><td>4</td><td>event</td><td>no reducer runs for <code>on_tick</code>; it is run-owned</td><td>unchanged</td></tr>
+      <tr><td>5</td><td>process</td><td>the Run is scheduled; its step consumes the inbox, increments <code>ticks</code>, reads <code>count</code>, publishes <code>status</code>, and waits on a timer</td><td>ticks = 1, last = "ok"</td></tr>
+      <tr><td>6</td><td>value</td><td>compute outputs are stabilised; <code>status</code> is a process output, not a compute output</td><td>status = "ok"</td></tr>
+      <tr><td>7</td><td>prepare</td><td>the Run state is validated against <code>stateType</code>; invariants are checked</td><td>valid</td></tr>
+      <tr><td>8</td><td>commit</td><td>generation N+1 becomes the truth</td><td>run row updated</td></tr>
+      <tr><td>9</td><td>publish</td><td>views receive the generation; <code>status</code> is available</td><td>view updated</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="diff">The run row diff</h2>
+  <p>Only the <code>runs.orchestrator</code> row changes. The manager Blockie's own state does not,
+  because the Run's state is not the Blockie's state.</p>
+
+  <pre><code>  "orchestrator": {
+    "id": "orchestrator",
+    "host": "manager",
+    "definition": { "id": "orchestrator", "version": "1.0.0", "digest": "sha256:..." },
+-   "status": "queued",
+-   "state": { "ticks": 0, "last": "" },
++   "status": "waiting",
++   "wait": { "reason": "timer", "detail": "60s" },
++   "state": { "ticks": 1, "last": "ok" },
+    "inbox": [],
+    "ack": "unacknowledged",
+    "grant": { "composite": "dashboard", "memberSet": [...] }
+  }</code></pre>
+
+  <table>
+    <thead><tr><th>Row</th><th>Changed?</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><code>runs.orchestrator</code></td><td>yes</td><td>the step consumed the inbox, wrote Run state, published <code>status</code>, and set a wait</td></tr>
+      <tr><td><code>blockies.manager</code></td><td>no</td><td>the Run's state belongs to the Run, not the host</td></tr>
+      <tr><td><code>composites.dashboard</code></td><td>no</td><td>membership, aliases, and the designation are unchanged</td></tr>
+      <tr><td><code>placements</code></td><td>no</td><td>nothing moved</td></tr>
+      <tr><td><code>connections</code></td><td>no</td><td>the routes were already declared</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="label">The output is not in the document</span>
+    <p><code>manager.status</code> is a <code>producer: process</code> value output. Its value
+    <code>"ok"</code> is published in generation N+1; it is not a field in the document. If the
+    World is reloaded, the Run resumes from its state and the output is republished when the Run
+    next steps.</p>
+  </div>
+
+  <h2 id="view">What the view sees</h2>
+  <table>
+    <thead><tr><th>Output</th><th>Generation N</th><th>Generation N+1</th></tr></thead>
+    <tbody>
+      <tr><td><code>manager.status</code></td><td>no value yet</td><td><code>"ok"</code></td></tr>
+      <tr><td><code>dashboard.status</code></td><td>no value yet</td><td><code>"ok"</code></td></tr>
+      <tr><td><code>counter1.count</code></td><td><code>1</code></td><td><code>1</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>The manager's process output becomes available in the same generation as the step that
+  published it. That is the difference between a process output and a compute output: the compute
+  output is recomputed from values, while the process output is a published result of an activity.</p>
+
+  <h2 id="termination">The terminal commit</h2>
+  <p>Now the agent cancels the Run. The cancellation is a request first, then a terminal commit.</p>
+
+  <div class="mermaid"><script type="text/plain">
+stateDiagram-v2
+  [*] --> queued: attach
+  queued --> waiting: tick step
+  waiting --> cancelling: cancel request
+  cancelling --> cancelled: grace expires
+  cancelled --> [*]
+  </script></div>
+
+  <h3>Transaction C1 — the request</h3>
+  <pre><code>  "orchestrator": {
+-   "status": "waiting",
+-   "wait": { "reason": "timer", "detail": "60s" },
++   "status": "cancelling",
+    "state": { "ticks": 1, "last": "ok" }
+  }</code></pre>
+
+  <p>The Run is still attached. The designation and the grant still exist; the process output is
+  still available. Nothing is torn down yet.</p>
+
+  <h3>Transaction C2 — the terminal commit</h3>
+  <p>When the cancellation is acknowledged, five effects must commit together. If any one of them
+  lands in a different generation, the World is briefly inconsistent.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  T["terminal commit"] --> R["run status = cancelled"]
+  T --> H["host becomes vacant"]
+  T --> D["designation cleared"]
+  T --> G["grant revoked"]
+  T --> O["status output unavailable"]
+  </script></div>
+
+  <pre><code>  "orchestrator": {
+-   "status": "cancelling",
++   "status": "cancelled",
+-   "grant": { "composite": "dashboard", "memberSet": [...] }
++   // grant removed
+  },
+  "dashboard": {
+-   "manager": { "run": "orchestrator", "epoch": 1 }
++   // manager removed
+  }</code></pre>
+
+  <table>
+    <thead><tr><th>Effect</th><th>Before</th><th>After</th></tr></thead>
+    <tbody>
+      <tr><td>Run status</td><td><code>cancelling</code></td><td><code>cancelled</code></td></tr>
+      <tr><td>Host occupancy</td><td>occupied (derived)</td><td>vacant (derived)</td></tr>
+      <tr><td>Manager designation</td><td><code>{ run: "orchestrator", epoch: 1 }</code></td><td>absent</td></tr>
+      <tr><td>Dispatch grant</td><td>present on the Run</td><td>removed</td></tr>
+      <tr><td><code>manager.status</code></td><td><code>"ok"</code></td><td>unavailable</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="label">Why one generation</span>
+    <p>If the designation were cleared in a second transaction, the dashboard would briefly claim a
+    manager that no longer exists. If the grant outlived the Run, a stale epoch could still dispatch.
+    If the output stayed available, a consumer would read a value from a dead activity. The five
+    effects are one fact: this manager is gone.</p>
+  </div>
+
+  <p>The manager Blockie remains a member of the dashboard. Only the designation is cleared; the
+  Blockie can host a new Run and be designated again. The alias <code>dashboard.status</code> also
+  remains, but its source is unavailable, so consumers are blocked.</p>
+
+  <h2 id="no-run">If no Run is attached</h2>
+  <p>The same <code>on_tick</code> delivery would be unclaimed. It would go to the manager's reducer,
+  if the Blueprint has one, or be rejected. The process output <code>status</code> would be
+  unavailable, because the host is vacant. A claim is what routes the event to the Run; without it,
+  the Run never sees the event.</p>
+
+  <h2 id="unchanged">What did not change</h2>
+  <ul>
+    <li><strong>The manager's Blockie state.</strong> It is still <code>{}</code>. The Run's
+    <code>ticks</code> and <code>last</code> are Run state.</li>
+    <li><strong>The counter.</strong> It still reads <code>1</code>; the Run read it, it did not
+    write it.</li>
+    <li><strong>Membership and aliases.</strong> The dashboard still contains the manager and still
+    exposes <code>status</code>; only the designation is gone.</li>
+    <li><strong>Placements.</strong> The manager did not move because its Run ended.</li>
+  </ul>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Where does <code>on_tick</code> go, and why not the reducer?</summary>
+      <p>It goes to the Run's inbox. The input is claimed by the attached Run, and a claimed input
+      is run-owned, not reducer-owned.</p>
+    </details>
+    <details>
+      <summary>What changes in <code>runs.orchestrator</code> after the tick?</summary>
+      <p>Status becomes <code>waiting</code>, a timer wait is added, state becomes
+      <code>{ ticks: 1, last: "ok" }</code>, and the inbox is empty. The grant and host do not
+      change.</p>
+    </details>
+    <details>
+      <summary>Does <code>blockies.manager.state</code> change?</summary>
+      <p>No. The Run's state is separate from the host's Blockie state. The host's state is still
+      <code>{}</code>.</p>
+    </details>
+    <details>
+      <summary>Why does <code>status</code> become unavailable after termination?</summary>
+      <p>Because it is a <code>producer: process</code> output, and its host is now vacant. A process
+      output with no active Run is unavailable; it never falls back to the last value.</p>
+    </details>
+    <details>
+      <summary>Which five effects commit together in C2?</summary>
+      <p>Run terminal, host vacant, designation cleared, grant revoked, and process output
+      unavailable. All in one generation.</p>
+    </details>
+    <details>
+      <summary>If no Run were attached, what would happen to a delivery to <code>on_tick</code>?</summary>
+      <p>It would be unclaimed, so it would go to the manager's reducer if one exists, or be
+      rejected. The Run would never see it, and <code>status</code> would be unavailable.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="trace.html">← One click, row by row</a>
+    <a href="../decisions.html">Next: the decision log →</a>
+  </div>
+</main>
+<script src="../assets/vendor/pele.global.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>
