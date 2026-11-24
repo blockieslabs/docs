@@ -148,9 +148,9 @@ flowchart LR
     <thead><tr><th>Port</th><th>Direction</th><th>Kind</th><th>Value type</th><th>Producer</th></tr></thead>
     <tbody>
       <tr><td><code>on_press</code></td><td>in</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
-      <tr><td><code>on_toggle</code></td><td>out</td><td>event</td><td><code>{ pressed: boolean }</code></td><td>—</td></tr>
+      <tr><td><code>on_toggle</code></td><td>out</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
       <tr><td><code>pressed</code></td><td>out</td><td>value</td><td><code>boolean</code></td><td><code>compute</code></td></tr>
-      <tr><td><code>increment</code></td><td>in</td><td>event</td><td><code>{ by?: integer }</code></td><td>—</td></tr>
+      <tr><td><code>increment</code></td><td>in</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
       <tr><td><code>count</code></td><td>out</td><td>value</td><td><code>integer</code></td><td><code>compute</code></td></tr>
       <tr><td><code>value</code></td><td>in</td><td>value</td><td><code>number</code></td><td>—</td></tr>
       <tr><td><code>display</code></td><td>out</td><td>value</td><td><code>string</code></td><td><code>compute</code></td></tr>
@@ -237,7 +237,7 @@ flowchart TB
 
   <pre><code>reduce(state, config, event):
   on increment:
-    next.count = state.count + (event.by ?? config.step)
+    next.count = state.count + config.step
   on reset:
     next.count = 0</code></pre>
 

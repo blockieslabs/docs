@@ -15,6 +15,7 @@ const NAV = [
       ["concepts/runtime.html", "The runtime"],
       ["concepts/relationships.html", "Relationships and authority"],
       ["concepts/schema.html", "The document"],
+      ["concepts/trace.html", "One click, row by row"],
     ],
   },
   {

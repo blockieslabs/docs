@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One click, row by row · Blockies</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script>try{var t=localStorage.getItem("blockies-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body data-root="..">
+<div id="nav"></div>
+<main>
+  <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
+  <h1 id="trace">One click, row by row</h1>
+  <p class="lede">A click is easy to describe and surprisingly instructive to trace. This page follows
+  one through the document, table by table, and shows exactly what changes and what does not.</p>
+
+  <div class="callout">
+    <span class="label">Running example</span>
+    <p>This is the <a href="example.html">dashboard</a> reduced to three members: a button, one
+    counter, and the gauge. The manager Run is not attached in this trace, so the process phase is
+    empty and the focus stays on the reducer and compute path.</p>
+  </div>
+
+  <h2 id="starting-point">The starting point</h2>
+  <p>Generation N. Only the rows that matter are shown; the frame, definitions, and policy are
+  unchanged throughout.</p>
+
+  <table>
+    <thead><tr><th>Row</th><th>Value at generation N</th></tr></thead>
+    <tbody>
+      <tr><td><code>blockies.button.state</code></td><td><code>{ "pressed": false }</code></td></tr>
+      <tr><td><code>blockies.button.config</code></td><td><code>{ "label": "Press" }</code></td></tr>
+      <tr><td><code>blockies.counter1.state</code></td><td><code>{ "count": 0 }</code></td></tr>
+      <tr><td><code>blockies.counter1.config</code></td><td><code>{ "step": 1 }</code></td></tr>
+      <tr><td><code>blockies.gauge.state</code></td><td><code>{}</code></td></tr>
+      <tr><td><code>blockies.gauge.config</code></td><td><code>{ "min": 0, "max": 100, "unit": "%" }</code></td></tr>
+      <tr><td><code>composites.dashboard.members</code></td><td>button, counter1, gauge</td></tr>
+      <tr><td><code>composites.dashboard.aliases</code></td><td><code>press</code> → button.on_press; <code>count</code> → counter1.count; <code>display</code> → gauge.display</td></tr>
+      <tr><td><code>placements</code></td><td>dashboard (100, 50); button (20, 10); counter1 (120, 10); gauge (240, 10)</td></tr>
+      <tr><td><code>connections</code></td><td>button.on_toggle → counter1.increment; counter1.count → gauge.value</td></tr>
+      <tr><td><code>runs</code></td><td>empty</td></tr>
+    </tbody>
+  </table>
+
+  <p>The presenter has a <code>deliver</code> grant on the dashboard's <code>press</code> alias. The
+  audience has a <code>read</code> grant on <code>display</code>. Nothing else is granted.</p>
+
+  <h2 id="click">The click</h2>
+  <div class="mermaid"><script type="text/plain">
+sequenceDiagram
+  actor P as Presenter
+  participant E as engine
+  participant B as button
+  participant C as counter 1
+  participant G as gauge
+  participant V as view
+  P->>E: deliver dashboard.press
+  E->>E: resolve alias to button.on_press
+  E->>B: reduce on_press
+  B-->>E: pressed = true, emit on_toggle
+  E->>C: reduce increment
+  C-->>E: count = 1
+  E->>G: compute display from value
+  G-->>E: "1%"
+  E->>E: commit generation N+1
+  E-->>V: publish
+  </script></div>
+
+  <p>The event ids below are illustrative. The important part is the order, not the labels.</p>
+
+  <pre><code>evt-1  deliver   presenter -> dashboard.press
+evt-1  resolve   dashboard.press -> button.on_press
+evt-1  reduce    button.on_press -> state.pressed = true
+evt-2  emit      button.on_toggle -> counter1.increment
+evt-2  reduce    counter1.increment -> state.count = 1
+       compute   button.pressed = true
+       compute   counter1.count = 1
+       compute   gauge.display = "1%"
+       commit    generation N+1</code></pre>
+
+  <h2 id="phases">Phase by phase</h2>
+  <table>
+    <thead><tr><th>#</th><th>Phase</th><th>What happens</th><th>State after</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>accept</td><td>the presenter delivers to <code>dashboard.press</code>; the alias resolves to <code>button.on_press</code>; the grant is checked</td><td>unchanged</td></tr>
+      <tr><td>2</td><td>validate</td><td>the payload <code>{}</code> matches the input type; the revision is current</td><td>unchanged</td></tr>
+      <tr><td>3</td><td>stage</td><td>a private working copy is opened; the event queue holds <code>evt-1</code></td><td>button.pressed = false</td></tr>
+      <tr><td>4</td><td>event</td><td><code>evt-1</code> goes to the button reducer; it flips <code>pressed</code> and emits <code>evt-2</code></td><td>button.pressed = true</td></tr>
+      <tr><td>5</td><td>event</td><td><code>evt-2</code> goes to the counter reducer; it adds <code>config.step</code></td><td>counter1.count = 1</td></tr>
+      <tr><td>6</td><td>process</td><td>no Run is ready, so no step runs</td><td>unchanged</td></tr>
+      <tr><td>7</td><td>value</td><td><code>button.pressed</code>, <code>counter1.count</code>, and <code>gauge.display</code> are computed</td><td>derived values updated</td></tr>
+      <tr><td>8</td><td>prepare</td><td>states are validated; invariants and hashes are checked</td><td>staged result is valid</td></tr>
+      <tr><td>9</td><td>commit</td><td>generation N+1 becomes the truth</td><td>document updated</td></tr>
+      <tr><td>10</td><td>publish</td><td>views receive generation N+1</td><td>view updated</td></tr>
+      <tr><td>11</td><td>effects</td><td>none</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="diff">The document diff</h2>
+  <p>Only the <code>blockies</code> table changes, and only two fields inside it. Everything else is
+  untouched, which is the point: a click does not move anything, connect anything, or rewrite the
+  interface.</p>
+
+  <pre><code>  "blockies": {
+    "button": {
+      "id": "button",
+      "blueprint": { "id": "button", "version": "1.0.0", "digest": "sha256:..." },
+      "config": { "label": "Press" },
+-     "state": { "pressed": false }
++     "state": { "pressed": true }
+    },
+    "counter1": {
+      "id": "counter1",
+      "blueprint": { "id": "counter", "version": "1.0.0", "digest": "sha256:..." },
+      "config": { "step": 1 },
+-     "state": { "count": 0 }
++     "state": { "count": 1 }
+    },
+    "gauge": {
+      "id": "gauge",
+      "blueprint": { "id": "gauge", "version": "1.0.0", "digest": "sha256:..." },
+      "config": { "min": 0, "max": 100, "unit": "%" },
+      "state": {}
+    }
+  }</code></pre>
+
+  <table>
+    <thead><tr><th>Table</th><th>Changed?</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><code>blockies</code></td><td>yes: button, counter1</td><td>the two reducers wrote their own state</td></tr>
+      <tr><td><code>composites</code></td><td>no</td><td>membership and aliases did not change</td></tr>
+      <tr><td><code>placements</code></td><td>no</td><td>nothing moved</td></tr>
+      <tr><td><code>connections</code></td><td>no</td><td>the routes were already declared</td></tr>
+      <tr><td><code>runs</code></td><td>no</td><td>no Run is attached in this trace</td></tr>
+      <tr><td><code>definitions</code></td><td>no</td><td>definitions are immutable</td></tr>
+      <tr><td><code>frame</code></td><td>no</td><td>the root scope is unchanged</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="view">What the view sees</h2>
+  <p>The view reads committed generations, not tables. At generation N it sees the old values; at
+  N+1 it sees the new ones, all at once.</p>
+
+  <table>
+    <thead><tr><th>Output</th><th>Generation N</th><th>Generation N+1</th></tr></thead>
+    <tbody>
+      <tr><td><code>button.pressed</code></td><td><code>false</code></td><td><code>true</code></td></tr>
+      <tr><td><code>counter1.count</code></td><td><code>0</code></td><td><code>1</code></td></tr>
+      <tr><td><code>gauge.display</code></td><td><code>"0%"</code></td><td><code>"1%"</code></td></tr>
+      <tr><td><code>dashboard.count</code></td><td><code>0</code></td><td><code>1</code></td></tr>
+      <tr><td><code>dashboard.display</code></td><td><code>"0%"</code></td><td><code>"1%"</code></td></tr>
+    </tbody>
+  </table>
+
+  <p><code>dashboard.press</code> is an event input, so it has no generation value. It is a channel,
+  not a cell.</p>
+
+  <div class="callout warn">
+    <span class="label">Why <code>gauge.display</code> is not in the document</span>
+    <p>The gauge's state is <code>{}</code>. <code>display</code> is a computed output, a function of
+    the <code>value</code> input and the config. If the World is reloaded, the display is recomputed
+    from the same inputs. There is no stale string to store, and no second writer to disagree with
+    the computation.</p>
+  </div>
+
+  <h2 id="variations">Two variations worth seeing</h2>
+
+  <h3>A Run claims <code>on_press</code></h3>
+  <p>If an attached Run claims <code>on_press</code>, the delivery goes to the Run's inbox instead of
+  the button's reducer. The button's <code>pressed</code> stays <code>false</code>, because the
+  reducer never runs. The Run handles the event in the process phase, but it cannot publish to
+  <code>pressed</code>: that port is <code>producer: compute</code> (D-017).</p>
+  <p>This is the exclusivity rule doing its job. If the design needs <code>pressed</code> to update,
+  the claim is wrong, or the Type needs a process output and the Run must publish to it. Claiming an
+  input is taking ownership of it, not adding a listener.</p>
+
+  <h3>The transaction aborts</h3>
+  <p>If the counter reducer returns an invalid state, such as <code>{ "count": "one" }</code>, the
+  transaction aborts. Nothing commits: the button's <code>pressed</code> stays <code>false</code>,
+  the counter stays <code>0</code>, and the view stays at generation N. The event is not applied.</p>
+  <p>If the gauge's compute throws instead, the transaction still commits. The button and counter
+  states are valid; the <code>display</code> output becomes <code>error</code>. The click is not
+  lost, and the derived value is honestly unavailable. Execution failure is local; contract
+  violation is fatal.</p>
+
+  <section class="check">
+    <h2>Check yourself</h2>
+    <details>
+      <summary>Which document rows changed?</summary>
+      <p><code>blockies.button.state.pressed</code> and <code>blockies.counter1.state.count</code>.
+      The gauge's state is still <code>{}</code>, and no other table changed.</p>
+    </details>
+    <details>
+      <summary>Why did the counter's reducer run in the same event phase as the button's?</summary>
+      <p>The button's reducer emitted <code>on_toggle</code> during the event phase, and event
+      emissions enqueue before the process phase. The counter's reducer handled it before any Run
+      stepped.</p>
+    </details>
+    <details>
+      <summary>Did the gauge's state change? Why not?</summary>
+      <p>No. The gauge has no mutable state. Its <code>display</code> is a computed output of the
+      <code>value</code> input and config, so it changes in the value phase, not in the document.</p>
+    </details>
+    <details>
+      <summary>If the counter reducer returns invalid state, what does the view see?</summary>
+      <p>Generation N, unchanged. The transaction aborts; nothing commits, including the button's
+      state change.</p>
+    </details>
+    <details>
+      <summary>If the gauge compute throws, what does the view see?</summary>
+      <p>Generation N+1, with the button and counter states updated and <code>display</code> marked
+      as <code>error</code>. The compute failure is local; the transaction commits.</p>
+    </details>
+    <details>
+      <summary>If a Run claims <code>on_press</code>, does the button's reducer run?</summary>
+      <p>No. The input is run-owned; the delivery goes to the Run's inbox. The reducer is not called,
+      and the button's <code>pressed</code> stays unchanged.</p>
+    </details>
+  </section>
+
+  <div class="next">
+    <a href="schema.html">← The document</a>
+    <a href="../decisions.html">Next: the decision log →</a>
+  </div>
+</main>
+<script src="../assets/vendor/pele.global.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

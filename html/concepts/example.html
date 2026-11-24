@@ -76,7 +76,7 @@ flowchart TB
   reduce(state, config, event):
     on on_press:
       next.pressed = not state.pressed
-      emit on_toggle { pressed: next.pressed }
+      emit on_toggle
 
   compute(state, config):
     pressed = state.pressed</code></pre>
@@ -91,12 +91,12 @@ flowchart TB
   config: { step: integer }     defaults { step: 1 }
 
   ports:
-    increment  event in { by?: integer }
+    increment  event in
     count      value out integer, producer: compute
 
   reduce(state, config, event):
     on increment:
-      next.count = state.count + (event.by ?? config.step)
+      next.count = state.count + config.step
 
   compute(state, config):
     count = state.count</code></pre>
