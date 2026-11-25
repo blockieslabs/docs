@@ -28,9 +28,9 @@
       grouping Blockies — never by inventing new primitives at runtime.</li>
     <li><strong>Activity is a separate thing.</strong> A <a class="term" href="concepts/processes.html#run">Run</a>
       is a long-lived, pausable activity. It lives <em>inside</em> a Blockie, which represents it.</li>
-    <li><strong>Grouping is not a Blockie.</strong> A <a class="term" href="concepts/composites.html">Composite</a>
-      is an assembly with membership, an optional manager, and a public face. It has no shape of
-      its own.</li>
+    <li><strong>A Composite is not a Blockie.</strong> A <a class="term" href="concepts/composites.html">Composite</a>
+      is a multi-cell widget: one Brain Blockie, zero or more Parts, zero or more Members. It has no
+      Blueprint or ports of its own; the Brain provides them.</li>
     <li><strong>Relationships never imply each other.</strong> Being near something, belonging to
       something, controlling something, and observing something are four different facts.</li>
   </ol>
@@ -39,7 +39,7 @@
 flowchart TB
   W["World<br/>one document, one space"] --> F["Frame<br/>the coordinate space"]
   W --> B["Blockies<br/>the inhabitants"]
-  W --> C["Composites<br/>the assemblies"]
+  W --> C["Composites<br/>the multi-cell widgets"]
   W --> R["Runs<br/>the activities"]
   C --> M["members"]
   M --> B
@@ -73,7 +73,7 @@ flowchart TB
       </tr>
       <tr>
         <td><a class="term" href="concepts/composites.html">Composite</a></td>
-        <td>An explicit assembly of Blockies and nested Composites.</td>
+        <td>A multi-cell widget: one Brain, Parts, and Members.</td>
         <td>Not a Blockie, not a Blueprint, has no ports of its own.</td>
       </tr>
       <tr>

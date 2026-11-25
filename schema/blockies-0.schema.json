@@ -73,7 +73,30 @@
       "properties": {
         "id": { "$ref": "#/$defs/Id" },
         "origin": { "$ref": "#/$defs/CompositeOrigin" },
-        "members": { "type": "array", "items": { "$ref": "#/$defs/MemberEdge" } },
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/MemberEdge" },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": ["role"],
+                "properties": { "role": { "const": "brain" } }
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": ["role"],
+                "properties": { "role": { "enum": ["part", "member"] } }
+              },
+              "minContains": 1
+            }
+          ]
+        },
         "manager": { "$ref": "#/$defs/ManagerDesignation" },
         "aliases": { "type": "array", "items": { "$ref": "#/$defs/Alias" } },
         "folds": { "type": "array", "items": { "$ref": "#/$defs/Fold" } },
@@ -106,9 +129,10 @@
     },
     "MemberEdge": {
       "type": "object",
-      "required": ["entity", "provenance"],
+      "required": ["entity", "role", "provenance"],
       "properties": {
         "entity": { "$ref": "#/$defs/EntityRef" },
+        "role": { "enum": ["brain", "part", "member"] },
         "provenance": {
           "oneOf": [
             { "const": "grouping" },
@@ -121,6 +145,24 @@
           ]
         }
       },
+      "allOf": [
+        {
+          "if": {
+            "required": ["role"],
+            "properties": { "role": { "enum": ["brain", "part"] } }
+          },
+          "then": {
+            "properties": {
+              "entity": {
+                "type": "object",
+                "required": ["blockie"],
+                "properties": { "blockie": { "$ref": "#/$defs/Id" } },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "ManagerDesignation": {

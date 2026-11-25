@@ -12,130 +12,146 @@
 <main>
   <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
   <h1 id="composites">Composites</h1>
-  <p class="lede">A Composite is an assembly. It is not a Blockie, it has no shape of its own, and
-  it owns no ports. That sounds like a weakness until you see what it buys.</p>
+  <p class="lede">A Composite is a multi-cell widget: one Brain, zero or more Parts, and zero or
+  more Members. It is not a loose group of Blockies; it is a thing made of cells.</p>
 
   <div class="callout">
     <span class="label">Running example</span>
-    <p>The <a href="example.html">dashboard</a> is a Composite. It groups the button, two counters,
-    and the gauge, exposes three aliases, declares a fold, and designates a manager. It has no
-    Blueprint and no state of its own.</p>
+    <p>The <a href="example.html">gauge</a> is a Composite of three cells: a Brain and two
+    segments. The dashboard is a Composite of five children: a Brain and four Members, one of which
+    is the gauge Composite. The difference is the role of the children, not the kind of parent.</p>
   </div>
 
-  <h2 id="what">What it is</h2>
-  <p>A Composite holds <strong>membership edges</strong> to Blockies and to other Composites, an
-  <strong>alias table</strong> describing its public face, optional <strong>folds</strong>, an
-  optional <strong>manager</strong> designation, and an optional presentation record.</p>
+  <h2 id="gauge">The gauge: a Brain and its Parts</h2>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart TB
+  subgraph G["Composite: gaugeWidget"]
+    B["Blockie: gaugeBrain<br/>pins gauge@1<br/>role: brain"]
+    P0["Blockie: gaugeSegment0<br/>pins gauge-segment@1<br/>role: part"]
+    P1["Blockie: gaugeSegment1<br/>pins gauge-segment@1<br/>role: part"]
+  end
+  C["counter1"] -- "count" --> B
+  B -- "level" --> P0
+  B -- "level" --> P1
+  G -- "display" --> V["view"]
+  </script></div>
+
+  <p>The gauge is one visual object, but it is made of three Blockies. A single Blockie cannot
+  change its width or height, so a three-cell gauge needs three cells. The Brain owns the behavior;
+  the Parts render the segments. The Parts' <code>index</code> configs live on the Blockies, not on
+  the Composite; the Composite only holds the role edges.</p>
+
+  <pre><code>composite gaugeWidget
+  brain: gaugeBrain
+  parts:
+    gaugeSegment0
+    gaugeSegment1
+
+  aliases:
+    count    -> gaugeBrain.count
+    display  -> gaugeBrain.display
+
+  connections:
+    gaugeBrain.level -> gaugeSegment0.level
+    gaugeBrain.level -> gaugeSegment1.level</code></pre>
+
+  <h2 id="dashboard">The dashboard: a Brain and its Members</h2>
 
   <div class="mermaid"><script type="text/plain">
 flowchart TB
   subgraph D["Composite: dashboard"]
-    B["button"]
-    C1["counter 1"]
-    C2["counter 2"]
-    G["gauge"]
-    F["fold: total<br/>sum of both counts"]
+    MB["Blockie: managerBlockie<br/>pins manager@1<br/>role: brain"]
+    BTN["Blockie: button<br/>role: member"]
+    C1["Blockie: counter1<br/>role: member"]
+    C2["Blockie: counter2<br/>role: member"]
+    G["Composite: gaugeWidget<br/>role: member"]
   end
-  A1["alias: press"] --> B
-  A2["alias: total"] --> F
-  A3["alias: display"] --> G
-  M["manager Blockie<br/>orchestrator Run"] -. "dispatch" .-> C2
-  M -. "reads count" .-> C1
+  MB -. "orchestrator Run dispatches" .-> C1
+  G -. "display alias" .-> V["view"]
   </script></div>
 
-  <p>The analogy is a labelled box. The box has a label, a list of contents, and maybe a person
-  responsible for it. The box is not one of the contents. If you pick up the box, you pick up the
-  things inside it, but the box does not become a thing inside itself.</p>
+  <p>The dashboard is a larger Composite. Its Brain is the manager Blockie; its Members are
+  independent widgets. The gauge is a Member, not a Part, because it has its own Brain and its own
+  behavior.</p>
 
+  <pre><code>composite dashboard
+  brain: managerBlockie
+  members:
+    button       { role: member }
+    counter1     { role: member }
+    counter2     { role: member }
+    gaugeWidget  { role: member }
+
+  aliases:
+    press    -> button.on_press
+    count    -> counter1.count
+    display  -> gaugeWidget.display
+    status   -> managerBlockie.status
+
+  fold total = sum(counter1.count, counter2.count)
+  manager: orchestrator, hosted by managerBlockie</code></pre>
+
+  <h2 id="roles">The four roles</h2>
   <table>
-    <thead><tr><th>Part</th><th>Answers</th><th>Dashboard example</th></tr></thead>
+    <thead><tr><th>Role</th><th>What it is</th><th>Cardinality</th><th>Job</th></tr></thead>
     <tbody>
-      <tr><td><strong>membership</strong></td><td>what is directly inside?</td><td>button, counter 1, counter 2, gauge</td></tr>
-      <tr><td><strong>aliases</strong></td><td>what is the public face?</td><td><code>press</code>, <code>total</code>, <code>display</code></td></tr>
-      <tr><td><strong>folds</strong></td><td>what is aggregated?</td><td><code>total = sum(counts)</code></td></tr>
-      <tr><td><strong>manager</strong></td><td>who coordinates it?</td><td>the manager Blockie's Run</td></tr>
-      <tr><td><strong>presentation</strong></td><td>how is the group drawn?</td><td>label "Sales dashboard", body = gauge</td></tr>
+      <tr><td><strong>Brain</strong></td><td>a Blockie</td><td>exactly one</td><td>owns the Composite's state, ports, and logic</td></tr>
+      <tr><td><strong>Part</strong></td><td>a Blockie</td><td>zero or more</td><td>renders a slice; vacant; driven by the Brain</td></tr>
+      <tr><td><strong>Member</strong></td><td>a Blockie or nested Composite</td><td>zero or more</td><td>an independent child; aliases, folds, management</td></tr>
+      <tr><td><strong>Manager</strong></td><td>a Run</td><td>zero or one</td><td>coordinates Members through <code>composite.dispatch</code></td></tr>
     </tbody>
   </table>
 
-  <h2 id="membership">Membership</h2>
+  <div class="callout warn">
+    <span class="label">Brain is not Manager</span>
+    <p>The Brain is a Blockie role: it owns the Composite's behavior. The Manager is a Run role: it
+    coordinates Members. A Brain may host the Manager Run, but being the Brain does not grant
+    management authority. In the gauge, the Brain is compute-only and there is no Manager at all.</p>
+  </div>
+
+  <h2 id="membership">Membership rules</h2>
   <ul>
-    <li><strong>Explicit.</strong> Being next to something, or looking like it, never creates
-    membership.</li>
-    <li><strong>One parent.</strong> A Blockie or Composite is a direct member of at most one
-    Composite. Standalone is a normal state.</li>
+    <li><strong>Exactly one Brain.</strong> It must be a direct member and a Blockie. The Composite
+    references the Brain's identity, never its Blueprint.</li>
+    <li><strong>At least one non-Brain child.</strong> A Composite with only a Brain is a Blockie,
+    not a Composite.</li>
+    <li><strong>Parts are Blockies and must be vacant.</strong> If a Part hosts a Run, its role is
+    <code>member</code>, not <code>part</code>.</li>
+    <li><strong>Members may be Blockies or Composites.</strong> A nested Composite is always a
+    Member, never a Part.</li>
+    <li><strong>One parent.</strong> A child is a direct member of at most one Composite.</li>
     <li><strong>Acyclic.</strong> Containment cannot loop.</li>
-    <li><strong>Provenanced.</strong> Each edge records whether it came from an ad-hoc
-    <a class="term" href="../glossary.html#grouping">grouping</a> or from a pinned template.</li>
-    <li><strong>Non-destructive.</strong> Removing a member does not delete it. It keeps its
-    identity, state, placement, and Run.</li>
-    <li><strong>Never empty.</strong> Removing the last member dissolves the Composite in the same
-    transaction.</li>
+    <li><strong>Non-destructive.</strong> Removing a child does not delete it. Removing the last
+    non-Brain child dissolves the Composite; the Brain becomes standalone.</li>
   </ul>
-
-  <p>Membership is not placement, and neither is nesting. Three separate facts:</p>
-
-  <table>
-    <thead><tr><th>Fact</th><th>Question</th><th>Dashboard example</th></tr></thead>
-    <tbody>
-      <tr><td><strong>Membership</strong></td><td>Which Composite directly contains it?</td><td>counter 1 is a member of dashboard</td></tr>
-      <tr><td><strong>Placement</strong></td><td>Where is it, relative to its scope?</td><td>counter 1 is at (120, 80) inside dashboard</td></tr>
-      <tr><td><strong>Nesting</strong></td><td>Which Composite contains another?</td><td>a "sales" Composite inside dashboard</td></tr>
-    </tbody>
-  </table>
-
-  <p>Two Blockies can be at the same coordinate and not be members of the same Composite. Two
-  members can be on opposite sides of the Frame. Geometry never implies membership (C-23).</p>
 
   <h2 id="origins">Two ways to get one</h2>
   <table>
     <thead><tr><th></th><th>Grouping</th><th>Template</th></tr></thead>
     <tbody>
-      <tr><td><strong>Members</strong></td><td>existing entities</td><td>freshly created from a definition</td></tr>
+      <tr><td><strong>Children</strong></td><td>existing entities</td><td>freshly created from a definition</td></tr>
+      <tr><td><strong>Roles</strong></td><td>chosen when grouping</td><td>declared by the definition</td></tr>
       <tr><td><strong>Membership</strong></td><td>mutable</td><td>immutable for the instance</td></tr>
       <tr><td><strong>Provenance</strong></td><td><code>grouping</code></td><td><code>template</code> + local node id</td></tr>
-      <tr><td><strong>Identity</strong></td><td>preserved</td><td>fresh for every instance</td></tr>
-      <tr><td><strong>To change it</strong></td><td>add or remove members</td><td>fork it into a grouping</td></tr>
-      <tr><td><strong>Dashboard</strong></td><td>this one</td><td>a "sales dashboard" template</td></tr>
+      <tr><td><strong>To change it</strong></td><td>add or remove children</td><td>fork it into a grouping</td></tr>
+      <tr><td><strong>Example</strong></td><td>the gauge as assembled here</td><td>a reusable three-segment gauge template</td></tr>
     </tbody>
   </table>
 
-  <p>Both are needed. Agents assemble existing things constantly (grouping), and reusable pieces
-  need to be pinned and reproducible (template). A grouping can be <em>saved as</em> a definition;
-  a template instance can be <em>forked</em> into a grouping, keeping every member identity.</p>
-
-  <pre><code>group        dashboard [button, counter1, counter2, gauge]
-instantiate  sales-template@1 -> fresh ids for every member
-save_as      dashboard -> dashboard-template@1   (structure and config, no state)
-fork         sales-template-instance -> grouping (same member ids, mutable)</code></pre>
+  <p>A grouping can be <em>saved as</em> a definition; a template instance can be <em>forked</em>
+  into a grouping, keeping every child identity. Save-as captures roles and Blueprint references,
+  not state or identities.</p>
 
   <h2 id="aliases">Aliases: the public face</h2>
-  <p>A Composite has no ports. It has a table of <strong>aliases</strong>, each pointing at
-  something that already exists: a member's port, or a fold.</p>
+  <p>A Composite has no ports. It has a table of <strong>aliases</strong>, each pointing at the
+  Brain's port, a Member's port, or a fold. An alias must never source a Part.</p>
 
   <pre><code>aliases:
+  count    -> gaugeBrain.count
+  display  -> gaugeBrain.display
   press    -> button.on_press
-  total    -> fold(sum, [counter1.count, counter2.count])
-  display  -> gauge.display</code></pre>
-
-  <div class="card">
-    <h3>Alias rules</h3>
-    <ul>
-      <li>A public <strong>value output</strong> has exactly one source. Never two.</li>
-      <li>A public <strong>value input</strong> may fan out through several alias entries, each with
-      one target.</li>
-      <li>A public <strong>event output</strong> may have several sources; events are channels.</li>
-      <li>Chains resolve outward-in through nesting and must terminate. Cycles are invalid.</li>
-      <li>External consumers see the Composite's alias, never a member id.</li>
-    </ul>
-  </div>
-
-  <div class="callout">
-    <span class="label">Why aliases instead of real ports</span>
-    <p>Because a second port system would need its own types, its own bindings, and its own state to
-    keep in sync with the members. An alias has no state, so there is nothing to sync and nothing
-    to disagree with.</p>
-  </div>
+  total    -> fold(sum, [counter1.count, counter2.count])</code></pre>
 
   <h3>Alias vs connection</h3>
   <table>
@@ -143,133 +159,102 @@ fork         sales-template-instance -> grouping (same member ids, mutable)</cod
     <tbody>
       <tr><td><strong>What it is</strong></td><td>a public name on a Composite</td><td>an edge between two endpoints</td></tr>
       <tr><td><strong>Scope</strong></td><td>the Composite's interface</td><td>data or event flow</td></tr>
-      <tr><td><strong>State</strong></td><td>none</td><td>declared, materialised at run time</td></tr>
-      <tr><td><strong>Dashboard example</strong></td><td><code>press</code> → <code>button.on_press</code></td><td><code>button.on_toggle</code> → <code>counter1.increment</code></td></tr>
+      <tr><td><strong>Sources</strong></td><td>Brain, Member, or fold</td><td>any declared endpoints</td></tr>
+      <tr><td><strong>Example</strong></td><td><code>display</code> → <code>gaugeBrain.display</code></td><td><code>gaugeBrain.level</code> → <code>gaugeSegment0.level</code></td></tr>
     </tbody>
   </table>
 
+  <p>Aliases chain through nesting. The dashboard's <code>display</code> alias points at
+  <code>gaugeWidget.display</code>, which points at <code>gaugeBrain.display</code>. External
+  consumers never see the gauge's parts.</p>
+
   <h2 id="folds">Folds: declared aggregation</h2>
-  <p>A normal value input accepts one producer. That rule is what makes values predictable — and it
-  makes <code>SUM(A1:A10)</code> impossible, because summing is many-into-one.</p>
-  <p>A <a class="term" href="../glossary.html#fold">fold</a> is the declared exception: a Composite
-  may aggregate a named set of same-typed member outputs with one operation — <code>sum</code>,
-  <code>count</code>, <code>min</code>, <code>max</code>, <code>collect</code>. It runs in the
-  runtime, uses no process, and shares no state.</p>
+  <p>A normal value input accepts one producer, so <code>SUM(A1:A10)</code> is impossible. A fold
+  is the declared exception: a Composite may aggregate a set of <strong>Member</strong> outputs
+  with one operation — <code>sum</code>, <code>count</code>, <code>min</code>, <code>max</code>,
+  <code>collect</code>. It never selects a Part.</p>
 
   <pre><code>fold total:
   operation: sum
   selects:   [counter1.count, counter2.count]
   result:    integer</code></pre>
 
-  <p>Aggregation becomes explicit rather than implicit. That is the difference between a fold and a
-  free-for-all. The fold is revalidated on every membership change: every selected member must
-  still expose the declared port with a compatible type (S-29).</p>
+  <p>The fold is revalidated on every membership change: every selected Member must still expose
+  the declared port with a compatible type.</p>
 
-  <h2 id="manager">The manager</h2>
-  <p>A Composite may designate zero or one manager. The manager is <strong>one of its members</strong>
-  — not an outside brain attached to the group.</p>
-
-  <div class="card">
-    <h3>Requirements</h3>
-    <ul>
-      <li>It must be a <strong>direct member</strong>.</li>
-      <li>It must be <strong>occupied</strong> — its Run must be active.</li>
-      <li>Designation carries an <strong>epoch</strong> so a stale grant can be rejected.</li>
-    </ul>
-  </div>
-
-  <p>What does management actually grant? Exactly one thing:
-  <strong><code>composite.dispatch</code></strong> — the ability to send an addressed event to a
-  member, chosen from a declared member set.</p>
+  <h2 id="manager">The Manager</h2>
+  <p>A Composite may designate zero or one Manager. The Manager is a Run hosted by a Brain or
+  Member — never a Part — and it must be occupied.</p>
 
   <table>
     <thead><tr><th>Can</th><th>Cannot</th></tr></thead>
     <tbody>
-      <tr><td>dispatch an event to a member in <code>memberSet</code></td><td>add, remove, move, or reparent a member</td></tr>
-      <tr><td>read its own <code>reads</code> values</td><td>read member Blockie state or configuration</td></tr>
-      <tr><td>publish its own <code>process</code> outputs</td><td>reach into a nested Composite's internals</td></tr>
-      <tr><td>be observed through an alias</td><td>cancel a member's Run</td></tr>
-      <tr><td>—</td><td>write any part of the document, including presentation</td></tr>
+      <tr><td>dispatch an event to a Member or the Brain in <code>memberSet</code></td><td>dispatch to a Part</td></tr>
+      <tr><td>read its own <code>reads</code> values</td><td>read child Blockie state or configuration</td></tr>
+      <tr><td>publish its own <code>process</code> outputs</td><td>add, remove, move, or reparent children</td></tr>
+      <tr><td>be observed through an alias</td><td>cancel a child's Run</td></tr>
+      <tr><td>—</td><td>write any part of the document</td></tr>
     </tbody>
   </table>
 
-  <p>Everything else already works without authority:</p>
-  <ul>
-    <li>publishing a Composite output — the manager's Run publishes to its own host port, and an
-    alias picks it up;</li>
-    <li>observing member outputs — through its own input ports, wired by connections;</li>
-    <li>changing appearance — publish a value; a Run never writes the document.</li>
-  </ul>
-
-  <div class="callout warn">
-    <span class="label">What a manager cannot do</span>
-    <p>Add, remove, move, or reparent members. Read member state or configuration. Reach into a
-    nested Composite. Cancel a member's Run. Write any part of the document, including
-    presentation.</p>
-  </div>
-
-  <h2 id="manager-dies">When the manager dies</h2>
-  <p>Five things must happen in <strong>one committed generation</strong>:</p>
-  <ol>
-    <li>the Run becomes terminal;</li>
-    <li>the host Blockie becomes vacant;</li>
-    <li>the designation is cleared;</li>
-    <li>the dispatch grant is revoked;</li>
-    <li>outputs that depended on it become unavailable.</li>
-  </ol>
-  <p>Split any one of those into a second transaction and you get a Composite claiming a manager
-  that no longer exists.</p>
+  <p>When the Manager's Run becomes terminal, five effects commit in one generation: the Run status,
+  the host's vacancy, the cleared designation, the revoked grant, and the resulting output
+  unavailability. If the Manager dies, the Brain and the children remain; only the designation is
+  cleared.</p>
 
   <h2 id="nesting">Nesting</h2>
-  <p>A Composite can contain another Composite. The parent sees the child's <em>public aliases</em>
-  and nothing else. The child has its own manager, and the parent's manager gains no authority over
-  it. If the child's manager dies, the child becomes unmanaged; the parent is untouched.</p>
+  <p>The gauge is a Member of the dashboard. The dashboard sees the gauge's aliases
+  (<code>count</code>, <code>display</code>) and nothing else. It cannot address the gauge's Brain
+  or Parts directly. The gauge has its own Brain and no Manager; the dashboard's Manager gains no
+  authority over it.</p>
 
-  <p>A "sales" Composite inside the dashboard could expose <code>total</code> and <code>display</code>
-  to the dashboard. The dashboard's manager can dispatch to the sales Composite's aliases, but it
-  cannot address the sales Composite's counters directly.</p>
+  <p>Nesting is what makes the tree recursive: a dashboard can be a Member of an app Composite; a
+  gauge can be a Member of a dashboard; a Part is always a leaf Blockie.</p>
 
   <h2 id="mistakes">Common mistakes</h2>
   <ol>
-    <li><strong>Treating the Composite as a member.</strong> It is the box, not a thing in the box.
-    A Composite can be a member of another Composite, but not of itself.</li>
-    <li><strong>Confusing membership with placement.</strong> A Blockie can be placed inside a
-    Composite's bounds without being a member; a member can be placed far away.</li>
-    <li><strong>Giving the Composite ports.</strong> Its interface is the alias table. A second port
-    system would duplicate types and state.</li>
-    <li><strong>Expecting the manager to own the members.</strong> It has one grant: dispatch. It
-    does not own member state, membership, or presentation.</li>
-    <li><strong>Leaving an alias dangling.</strong> Removing a member that an alias references must
-    repair or reject the interface in the same commit.</li>
+    <li><strong>Treating a Composite as a loose group.</strong> It has a Brain; that is what makes
+    it a thing rather than a set.</li>
+    <li><strong>Treating the Brain as the Manager.</strong> The Brain owns behavior; the Manager is
+    a Run that coordinates Members.</li>
+    <li><strong>Treating a Part as a Member.</strong> A Part is a visual extension and must be
+    vacant; a Member is independent and may host a Run.</li>
+    <li><strong>Making a Part an alias source or a dispatch target.</strong> Parts are internal;
+    the Brain drives them.</li>
+    <li><strong>Removing the Brain without replacement.</strong> Replace it or dissolve the
+    Composite; a Brain-only Composite is a Blockie.</li>
+    <li><strong>Forgetting the non-Brain child.</strong> A Composite needs at least two cells: the
+    Brain and at least one Part or Member.</li>
   </ol>
 
   <section class="check">
     <h2>Check yourself</h2>
     <details>
-      <summary>Why does a Composite not have its own ports?</summary>
-      <p>Because ports imply state and ownership. Aliases point at ports that already exist, so
-      there is one source of truth and nothing to keep in sync.</p>
+      <summary>How many cells does the gauge have?</summary>
+      <p>Three: one Brain and two Parts.</p>
     </details>
     <details>
-      <summary>Your manager publishes a value. Did it need special authority?</summary>
-      <p>No. It published to its own host's <code>process</code> port, and an alias exposed it. Only
-      dispatch needs a grant.</p>
+      <summary>Why is the gauge a Composite and not a Blockie?</summary>
+      <p>Because it spans three cells and has a Brain plus Parts. A Blockie is one cell.</p>
     </details>
     <details>
-      <summary>You remove a member that an alias points at. What must happen?</summary>
-      <p>The same transaction must repair the alias or reject the change. Leaving a dangling alias
-      would mean the Composite's public face refers to something that no longer exists.</p>
+      <summary>Why is the dashboard a Composite?</summary>
+      <p>Because it has a Brain (the manager Blockie), Members (the widgets), an interface, and a
+      footprint. It is a larger widget, not a loose group.</p>
     </details>
     <details>
-      <summary>What is the difference between a grouping and a template?</summary>
-      <p>A grouping assembles existing entities and stays mutable. A template creates fresh
-      identities from a definition and is immutable for the instance; to change it, fork it into a
-      grouping.</p>
+      <summary>Can the dashboard's Manager dispatch to a gauge segment?</summary>
+      <p>No. The segments are Parts, not Members, and Parts are never in the memberSet.</p>
     </details>
     <details>
-      <summary>Can the dashboard's manager dispatch to a nested Composite's member?</summary>
-      <p>No. It can dispatch to the nested Composite's public aliases, not to its members. The
-      parent's authority stops at the child's interface.</p>
+      <summary>What happens when the last non-Brain child is removed?</summary>
+      <p>The Composite dissolves; the Brain becomes a standalone Blockie. A Brain-only Composite is
+      not a Composite.</p>
+    </details>
+    <details>
+      <summary>Is the Manager the same as the Brain?</summary>
+      <p>No. The Brain is a Blockie role; the Manager is a Run role. They may be hosted by the same
+      Blockie, but they are different facts.</p>
     </details>
   </section>
 

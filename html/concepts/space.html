@@ -18,8 +18,9 @@
   <div class="callout">
     <span class="label">Running example</span>
     <p>In the <a href="example.html">dashboard</a>, the Composite sits at <code>(100, 50)</code> and
-    each member has a local coordinate inside it. Moving the dashboard moves every member on screen
-    without changing a single member coordinate.</p>
+    each member has a local coordinate inside it. The gauge is itself a Composite; its Brain and
+    Parts have local coordinates inside the gauge. Moving the dashboard moves everything on screen
+    without changing a single child coordinate.</p>
   </div>
 
   <h2 id="frame">World, Frame, placement</h2>
@@ -28,14 +29,17 @@
   ultimately resolves to a position inside it.</p>
   <p>Placement is <strong>hierarchical and local</strong>. An entity's position is relative to its
   nearest placed ancestor: its Composite if it has one, otherwise the Frame. Moving a Composite
-  moves everything inside it without touching a single member coordinate.</p>
+  moves everything inside it without touching a single child coordinate.</p>
 
   <div class="mermaid"><script type="text/plain">
 flowchart TB
   F["Frame<br/>root scope"] --> C["Composite: dashboard<br/>translate 100, 50"]
   C --> B1["counter 1<br/>local 20, 10"]
   C --> B2["counter 2<br/>local 20, 90"]
-  C --> G["gauge<br/>local 240, 10"]
+  C --> G["Composite: gaugeWidget<br/>local 240, 10"]
+  G --> GB["gaugeBrain<br/>local 0, 0"]
+  G --> GP["gaugeSegment0<br/>local 0, 1"]
+  G --> GQ["gaugeSegment1<br/>local 0, 2"]
   F --> B3["standalone Blockie<br/>frame coordinates"]
   </script></div>
 
@@ -55,9 +59,15 @@ flowchart TB
     <tbody>
       <tr><td>dashboard</td><td>translate (100, 50), scale 1</td><td>(100, 50)</td></tr>
       <tr><td>counter 1</td><td>translate (20, 10), scale 1</td><td>(120, 60)</td></tr>
-      <tr><td>gauge</td><td>translate (240, 10), scale 1</td><td>(340, 60)</td></tr>
+      <tr><td>gaugeWidget</td><td>translate (240, 10), scale 1</td><td>(340, 60)</td></tr>
+      <tr><td>gaugeBrain</td><td>translate (0, 0) inside gaugeWidget</td><td>(340, 60)</td></tr>
+      <tr><td>gaugeSegment0</td><td>translate (0, 1) inside gaugeWidget</td><td>(340, 61)</td></tr>
+      <tr><td>gaugeSegment1</td><td>translate (0, 2) inside gaugeWidget</td><td>(340, 62)</td></tr>
     </tbody>
   </table>
+
+  <p>The gauge's three cells are local to the gauge. Moving the gauge moves all three; moving the
+  dashboard moves the gauge and therefore all three. No child coordinate changes.</p>
 
   <p>Move the dashboard to <code>(300, 200)</code> and counter 1 moves to <code>(320, 210)</code>
   without its own placement changing. Scale the dashboard by 2 and counter 1's world position becomes
@@ -118,12 +128,13 @@ flowchart TB
 
   <h2 id="footprint">Footprint</h2>
   <p>A Composite's <a class="term" href="../glossary.html#footprint">footprint</a> is
-  <strong>derived</strong> from where its members actually are. It is not stored, and it does not
+  <strong>derived</strong> from where its children actually are. It is not stored, and it does not
   decide membership. A Composite can be spatially disconnected, with gaps, and that means
   nothing.</p>
 
-  <p>The dashboard's footprint is the union of the button, the counters, and the gauge. Move the
-  gauge far away and the footprint grows; the membership list does not change.</p>
+  <p>The gauge's footprint is the union of its three cells. The dashboard's footprint is the union
+  of the button, the counters, and the gauge. Move the gauge far away and the dashboard's footprint
+  grows; the membership list does not change.</p>
 
   <h2 id="inert">The rule that keeps it honest</h2>
   <div class="callout good">

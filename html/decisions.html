@@ -12,7 +12,7 @@
 <main>
   <p class="crumb"><a href="index.html">Blockies</a> / Reference</p>
   <h1>Decision log</h1>
-  <p class="lede">Forty-six decisions, each recording what was chosen and why. The log is
+  <p class="lede">Forty-seven decisions, each recording what was chosen and why. The log is
   append-only: a later decision supersedes an earlier one, it never rewrites it.</p>
 
   <p>Read a decision as: <em>what changed</em>, and <em>what would have gone wrong otherwise</em>.
@@ -331,6 +331,14 @@
     <strong>appearance</strong>; Model State is <strong>Blockie state</strong>. The decision log
     keeps the old words; living documents use the new ones.
     <a href="concepts/types.html">Blueprints</a></p>
+  </div>
+
+  <div class="dec" id="d-047"><span class="id">D-047</span> <span class="badge">active</span>
+    <h3>A Composite is a multi-cell widget with a Brain</h3>
+    <p>Exactly one Brain Blockie, zero or more Parts, zero or more Members. The Brain owns the
+    behavior; Parts render slices; Members are independent children. The Manager is a Run role, not
+    the Brain. Gauge and Dashboard are patterns, not entity kinds.
+    <a href="concepts/composites.html">Composites</a></p>
   </div>
 
   <h2>Validation</h2>

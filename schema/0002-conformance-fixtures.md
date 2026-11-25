@@ -35,26 +35,33 @@ concept has been reintroduced.
 | ID | Given | Expected |
 |---|---|---|
 | VAL-001 | A placement key that is not in `blockies` or `composites` | Reject |
-| VAL-002 | An alias whose `ref.member` is not a direct member | Reject |
+| VAL-002 | An alias whose `ref.member` is not a direct child | Reject |
 | VAL-003 | `run.host` naming a missing Blockie | Reject |
-| VAL-004 | A manager run whose host is not a direct member | Reject |
+| VAL-004 | A manager run whose host is not a direct Brain/Member | Reject |
 | VAL-005 | A manager run that is not occupied | Reject |
-| VAL-006 | An alias naming a port the member's Blueprint does not declare | Reject |
+| VAL-006 | An alias naming a port the child's Blueprint does not declare | Reject |
 | VAL-007 | A connection whose `from` endpoint is an input | Reject |
 | VAL-008 | A connection whose endpoints differ in kind or fail assignability | Reject |
 | VAL-009 | Two aliases with the same id | Reject |
-| VAL-010 | A fold selecting a member without the declared port | Reject |
+| VAL-010 | A fold selecting a Member without the declared port | Reject |
 | VAL-011 | A Blockie whose Blueprint is unresolvable or digest-mismatched | Reject |
 | VAL-012 | A membership cycle, or a member with two parents | Reject |
-| VAL-013 | A connection addressing a member port from outside its Composite | Reject |
+| VAL-013 | A connection addressing a child port from outside its Composite | Reject |
 | VAL-014 | A run whose `host.claims` names an input the Blueprint does not mark claimable | Reject |
 | VAL-015 | A run whose `host.publishes` names a port not marked `producer: process` | Reject |
-| VAL-016 | A dispatch target outside `grant.memberSet` | Reject |
-| VAL-017 | `presentation.body` naming something that is not a direct member | Reject |
+| VAL-016 | A dispatch target outside `grant.memberSet`, or a Part | Reject |
+| VAL-017 | `presentation.body` naming something that is not a direct child | Reject |
 | VAL-018 | `presentation.renderer` resolving to a Blueprint instead of a renderer package | Reject |
-| VAL-019 | A grant whose scope names a member port from outside its Composite | Reject |
+| VAL-019 | A grant whose scope names a child port from outside its Composite | Reject |
 | VAL-020 | Two roles with the same id | Reject |
 | VAL-021 | A grant scope combining two forms, such as `world` and `entities` | Reject (schema) |
+| VAL-022 | A Composite with no `role: "brain"` member | Reject |
+| VAL-023 | A Composite with two `role: "brain"` members | Reject |
+| VAL-024 | A `role: "brain"` member whose `entity` is a Composite | Reject |
+| VAL-025 | A `role: "part"` member whose `entity` is a Composite | Reject |
+| VAL-026 | A `role: "part"` Blockie hosting an active Run | Reject |
+| VAL-027 | An alias, fold, or dispatch target naming a Part | Reject |
+| VAL-028 | A Composite with a Brain and no other child | Reject |
 
 ## Runtime vectors
 

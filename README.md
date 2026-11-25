@@ -14,23 +14,26 @@ document says so in its header.
    decisions taken on 2026-11-14. Start here.
 2. [`decisions/0011-naming.md`](decisions/0011-naming.md) — D-046, the vocabulary: Blueprint,
    value type, appearance, Blockie state. Read this before the specifications.
-3. [`architecture/layers.md`](architecture/layers.md) — the seven-layer stack, and what each
+3. [`decisions/0012-composite-brain.md`](decisions/0012-composite-brain.md) — D-047, the Composite
+   as a multi-cell widget: one Brain, zero or more Parts, zero or more Members, and a Manager that
+   is a Run role.
+4. [`architecture/layers.md`](architecture/layers.md) — the seven-layer stack, and what each
    layer may and may not do.
-4. [`architecture/fsm-inventory.md`](architecture/fsm-inventory.md) — every state machine in
+5. [`architecture/fsm-inventory.md`](architecture/fsm-inventory.md) — every state machine in
    the system, its owner, and the level it latches onto.
-5. [`specs/BCM-core-model.md`](specs/BCM-core-model.md),
+6. [`specs/BCM-core-model.md`](specs/BCM-core-model.md),
    [`specs/BPS-process.md`](specs/BPS-process.md),
    [`specs/BCS-composite.md`](specs/BCS-composite.md) — the normative model, requirements
    numbered `C-n`, `P-n`, `S-n` so they can be cited.
-6. [`traces/0001-reference-traces.md`](traces/0001-reference-traces.md) — four scenarios as
+7. [`traces/0001-reference-traces.md`](traces/0001-reference-traces.md) — four scenarios as
    transaction logs. These are the golden vectors.
-7. [`schema/0001-minimal-model.md`](schema/0001-minimal-model.md) — the derived model, with a
+8. [`schema/0001-minimal-model.md`](schema/0001-minimal-model.md) — the derived model, with a
    traceability table and a list of what was deliberately cut.
-8. [`schema/blockies-0.schema.json`](schema/blockies-0.schema.json) and
+9. [`schema/blockies-0.schema.json`](schema/blockies-0.schema.json) and
    [`schema/0002-conformance-fixtures.md`](schema/0002-conformance-fixtures.md) — the machine
    schema and the fixture vectors.
-9. [`performance/0001-bottleneck-analysis.md`](performance/0001-bottleneck-analysis.md) — where a
-   conforming implementation will be slow, by layer, with the technique that removes each cost.
+10. [`performance/0001-bottleneck-analysis.md`](performance/0001-bottleneck-analysis.md) — where a
+    conforming implementation will be slow, by layer, with the technique that removes each cost.
 
 ## What is still missing
 
@@ -78,4 +81,5 @@ amended by them. Known deltas:
 | Manager must hold explicit World-granted authority | D-018 — one verb, `composite.dispatch` |
 | Composite endpoint union with independent ports | D-015 — Composite ports are aliases |
 | "A Composite is a first-class grouping entity" plus templates | D-001 — grouping and instantiation are separate operations |
+| A Composite is a generic grouping of independent entities | D-047 — a Composite is a multi-cell widget with one Brain, zero or more Parts, and zero or more Members |
 | Attention is a relationship | D-009 — attention is a projection |

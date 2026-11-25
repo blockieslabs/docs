@@ -39,9 +39,20 @@ entity.
 Blueprint, configuration, Blockie state, and an optional placement. A Blockie has no mode, no owner
 field, and no parent field: those are derived or stored elsewhere.
 
-**C-3.** A Composite is a grouping entity. It is not a Blockie, has no Blueprint, and owns no ports. It
-owns membership edges, an optional manager designation, an alias table, folds, and an optional
-presentation record.
+**C-3.** A Composite is a multi-cell widget. It is not a Blockie, has no Blueprint, and owns no
+ports. It has exactly one **Brain** (a Blockie), zero or more **Parts** (Blockies), and zero or
+more **Members** (Blockies or Composites). It also owns an alias table, optional folds, an optional
+manager designation, and an optional presentation record. The Brain owns the Composite's behavior;
+Parts render slices of it; Members are independent children.
+
+**C-3a.** The Brain is a direct member with role `brain`. It MUST be a Blockie. The Composite
+points at the Brain's identity, never at the Brain's Blueprint.
+
+**C-3b.** A Part is a direct member with role `part`. It MUST be a Blockie and MUST be vacant. A
+Part is a visual extension; if it hosts a Run, its role is `member`, not `part`.
+
+**C-3c.** A Member is a direct member with role `member`. It MAY be a Blockie or a nested
+Composite. A Composite MUST have at least one child other than its Brain.
 
 **C-4.** A Run is a first-class managed activity with its own identity and state, hosted by
 exactly one Blockie (BPS).
@@ -128,6 +139,10 @@ and is semantically inert.
 | Attention (derived) | What is observing this? | Membership, management, or access |
 | Lifecycle authority | Who may cancel or suspend this Run? | Management |
 
+A membership edge carries a role: `brain`, `part`, or `member`. The role is part of membership,
+not a separate relationship. Management is a Run role; the Brain is a Blockie role. They are not
+the same and need not be held by the same entity.
+
 **C-26.** Attention is a projection, never an entity: it is the union of session scopes (external
 actors) and the declared input bindings of in-world runs. It grants nothing.
 
@@ -158,8 +173,8 @@ normative vocabulary.
 **C-30. Manager availability.** A manager is available if its Run is in any non-terminal state.
 Designation and availability are separate: designation is state, availability is a query.
 
-**C-31. Footprint.** A Composite's footprint is the union of its members' world-space bounds,
-ignoring unplaced members and unplaced subtrees.
+**C-31. Footprint.** A Composite's footprint is the union of its children's world-space bounds,
+ignoring unplaced children and unplaced subtrees.
 
 **C-32. Output availability.** A port with `producer: process` is unavailable when its host is
 vacant. Unavailability is never replaced by a default or a stale value.
@@ -186,14 +201,18 @@ capabilities requires a new version. A World never silently resolves a different
 **C-38.** Exactly one host Blockie per Run.
 **C-39.** At most one direct Composite per Blockie.
 **C-40.** Containment and process parentage are both acyclic.
-**C-41.** At most one manager per Composite; the manager MUST be a direct member and occupied.
+**C-41.** At most one manager per Composite; the manager MUST be a direct member with role `brain`
+or `member` and MUST be occupied. Exactly one Brain per Composite; the Brain MUST be a direct
+member with role `brain` and MUST be a Blockie. A Part MUST be a Blockie and MUST be vacant.
 **C-42.** Every alias has exactly one source; alias chains terminate at a member port or a fold.
 **C-43.** A value output has exactly one effective producer; a value input has at most one.
-**C-44.** A Composite is never empty while assembled; removing the last member dissolves it.
+**C-44.** A Composite MUST have at least one child other than its Brain while assembled. Removing
+the last such child dissolves the Composite; the Brain becomes a standalone Blockie.
 **C-45.** A Run never writes the World document and never writes its host's Blockie state.
 **C-46.** A terminal Run, the clearing of its manager designation, and the resulting output
 unavailability MUST commit in one generation.
-**C-47.** No connection addresses a member port from outside its owning Composite.
+**C-47.** No connection addresses a member port from outside its owning Composite. An alias or fold
+MUST NOT source a Part; Parts are driven by the Brain through internal connections.
 
 ## 11. Validation and repair
 
@@ -206,7 +225,7 @@ load.
 **C-50.** An invariant failure whose repair is unambiguous MUST be repaired with a diagnostic
 rather than rejected. The only repair in 0.1 is a dangling manager designation: if the manager Run
 is terminal or the manager is no longer a direct member, the designation is cleared and the
-Composite becomes unmanaged.
+Composite becomes unmanaged. A missing, duplicate, or non-Blockie Brain is rejected, not repaired.
 
 **C-51.** State or configuration that fails its declared type MUST reject. It is never coerced,
 defaulted, or partially applied.

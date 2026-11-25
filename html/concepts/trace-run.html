@@ -19,7 +19,7 @@
     <span class="label">Running example</span>
     <p>This is the <a href="example.html">dashboard</a> again, now with the manager Run attached.
     The manager Blockie hosts <code>orchestrator</code>; the Run claims <code>on_tick</code>, reads
-    <code>count</code>, and publishes <code>status</code>. The counter and the gauge are unchanged
+    <code>count</code>, and publishes <code>status</code>. The counter and the gauge Composite are unchanged
     from the previous trace.</p>
   </div>
 
@@ -33,19 +33,23 @@
       <tr><td><code>runs.orchestrator.status</code></td><td><code>queued</code></td></tr>
       <tr><td><code>runs.orchestrator.state</code></td><td><code>{ "ticks": 0, "last": "" }</code></td></tr>
       <tr><td><code>runs.orchestrator.inbox</code></td><td><code>[]</code></td></tr>
-      <tr><td><code>runs.orchestrator.grant</code></td><td><code>{ "composite": "dashboard", "memberSet": [...] }</code></td></tr>
+      <tr><td><code>runs.orchestrator.grant</code></td><td><code>{ "composite": "dashboard", "memberSet": [managerBlockie, button, counter1, counter2, gaugeWidget] }</code> (Members and Brain; no Parts)</td></tr>
+      <tr><td><code>composites.dashboard.members[role=brain]</code></td><td><code>managerBlockie</code></td></tr>
       <tr><td><code>composites.dashboard.manager</code></td><td><code>{ "run": "orchestrator", "epoch": 1 }</code></td></tr>
-      <tr><td><code>blockies.manager.state</code></td><td><code>{}</code></td></tr>
-      <tr><td><code>blockies.manager.config</code></td><td><code>{ "interval": 60 }</code></td></tr>
-      <tr><td><code>manager.on_tick</code></td><td>claimable event input, claimed by the Run</td></tr>
-      <tr><td><code>manager.status</code></td><td>process value output, no value published yet</td></tr>
+      <tr><td><code>composites.dashboard.members</code></td><td>button, counter1, counter2, gaugeWidget (all role <code>member</code>)</td></tr>
+      <tr><td><code>composites.gaugeWidget</code></td><td>brain <code>gaugeBrain</code>; parts <code>gaugeSegment0</code>, <code>gaugeSegment1</code></td></tr>
+      <tr><td><code>blockies.managerBlockie.state</code></td><td><code>{}</code></td></tr>
+      <tr><td><code>blockies.managerBlockie.config</code></td><td><code>{ "interval": 60 }</code></td></tr>
+      <tr><td><code>managerBlockie.on_tick</code></td><td>claimable event input, claimed by the Run</td></tr>
+      <tr><td><code>managerBlockie.status</code></td><td>process value output, no value published yet</td></tr>
       <tr><td><code>counter1.count</code></td><td><code>1</code></td></tr>
     </tbody>
   </table>
 
-  <p>The manager is a direct member of the dashboard, which is why it can be designated. The
-  designation and the grant are two different records: the designation is on the Composite, the
-  grant is on the Run.</p>
+  <p><code>managerBlockie</code> is the dashboard's Brain and a direct member, which is why it can
+  be designated as Manager. The designation and the grant are two different records: the designation
+  is on the Composite, the grant is on the Run. The gauge Composite is a Member; its Brain and Parts
+  are not in the grant's memberSet.</p>
 
   <h2 id="tick">The tick</h2>
   <div class="mermaid"><script type="text/plain">
@@ -71,7 +75,7 @@ sequenceDiagram
   <table>
     <thead><tr><th>#</th><th>Phase</th><th>What happens</th><th>State after</th></tr></thead>
     <tbody>
-      <tr><td>1</td><td>accept</td><td>the clock delivers to <code>manager.on_tick</code>; the Run's claim is resolved</td><td>unchanged</td></tr>
+      <tr><td>1</td><td>accept</td><td>the clock delivers to <code>managerBlockie.on_tick</code>; the Run's claim is resolved</td><td>unchanged</td></tr>
       <tr><td>2</td><td>validate</td><td>the payload <code>{}</code> matches; the Run is active</td><td>unchanged</td></tr>
       <tr><td>3</td><td>stage</td><td>the delivery is appended to the inbox</td><td>inbox has one item</td></tr>
       <tr><td>4</td><td>event</td><td>no reducer runs for <code>on_tick</code>; it is run-owned</td><td>unchanged</td></tr>
@@ -105,7 +109,7 @@ sequenceDiagram
     <thead><tr><th>Row</th><th>Changed?</th><th>Why</th></tr></thead>
     <tbody>
       <tr><td><code>runs.orchestrator</code></td><td>yes</td><td>the step consumed the inbox, wrote Run state, published <code>status</code>, and set a wait</td></tr>
-      <tr><td><code>blockies.manager</code></td><td>no</td><td>the Run's state belongs to the Run, not the host</td></tr>
+      <tr><td><code>blockies.managerBlockie</code></td><td>no</td><td>the Run's state belongs to the Run, not the host</td></tr>
       <tr><td><code>composites.dashboard</code></td><td>no</td><td>membership, aliases, and the designation are unchanged</td></tr>
       <tr><td><code>placements</code></td><td>no</td><td>nothing moved</td></tr>
       <tr><td><code>connections</code></td><td>no</td><td>the routes were already declared</td></tr>
@@ -114,7 +118,7 @@ sequenceDiagram
 
   <div class="callout">
     <span class="label">The output is not in the document</span>
-    <p><code>manager.status</code> is a <code>producer: process</code> value output. Its value
+    <p><code>managerBlockie.status</code> is a <code>producer: process</code> value output. Its value
     <code>"ok"</code> is published in generation N+1; it is not a field in the document. If the
     World is reloaded, the Run resumes from its state and the output is republished when the Run
     next steps.</p>
@@ -124,7 +128,7 @@ sequenceDiagram
   <table>
     <thead><tr><th>Output</th><th>Generation N</th><th>Generation N+1</th></tr></thead>
     <tbody>
-      <tr><td><code>manager.status</code></td><td>no value yet</td><td><code>"ok"</code></td></tr>
+      <tr><td><code>managerBlockie.status</code></td><td>no value yet</td><td><code>"ok"</code></td></tr>
       <tr><td><code>dashboard.status</code></td><td>no value yet</td><td><code>"ok"</code></td></tr>
       <tr><td><code>counter1.count</code></td><td><code>1</code></td><td><code>1</code></td></tr>
     </tbody>
@@ -188,7 +192,7 @@ flowchart LR
       <tr><td>Host occupancy</td><td>occupied (derived)</td><td>vacant (derived)</td></tr>
       <tr><td>Manager designation</td><td><code>{ run: "orchestrator", epoch: 1 }</code></td><td>absent</td></tr>
       <tr><td>Dispatch grant</td><td>present on the Run</td><td>removed</td></tr>
-      <tr><td><code>manager.status</code></td><td><code>"ok"</code></td><td>unavailable</td></tr>
+      <tr><td><code>managerBlockie.status</code></td><td><code>"ok"</code></td><td>unavailable</td></tr>
     </tbody>
   </table>
 
@@ -200,8 +204,9 @@ flowchart LR
     effects are one fact: this manager is gone.</p>
   </div>
 
-  <p>The manager Blockie remains a member of the dashboard. Only the designation is cleared; the
-  Blockie can host a new Run and be designated again. The alias <code>dashboard.status</code> also
+  <p><code>managerBlockie</code> remains the dashboard's Brain and a member. Only the designation is
+  cleared; the Blockie can host a new Run and be designated again. The gauge Composite remains a
+  Member. The alias <code>dashboard.status</code> also
   remains, but its source is unavailable, so consumers are blocked.</p>
 
   <h2 id="no-run">If no Run is attached</h2>
@@ -216,7 +221,7 @@ flowchart LR
     <code>ticks</code> and <code>last</code> are Run state.</li>
     <li><strong>The counter.</strong> It still reads <code>1</code>; the Run read it, it did not
     write it.</li>
-    <li><strong>Membership and aliases.</strong> The dashboard still contains the manager and still
+    <li><strong>Membership and aliases.</strong> The dashboard still contains managerBlockie and gaugeWidget and still
     exposes <code>status</code>; only the designation is gone.</li>
     <li><strong>Placements.</strong> The manager did not move because its Run ended.</li>
   </ul>
@@ -235,7 +240,7 @@ flowchart LR
       change.</p>
     </details>
     <details>
-      <summary>Does <code>blockies.manager.state</code> change?</summary>
+      <summary>Does <code>blockies.managerBlockie.state</code> change?</summary>
       <p>No. The Run's state is separate from the host's Blockie state. The host's state is still
       <code>{}</code>.</p>
     </details>

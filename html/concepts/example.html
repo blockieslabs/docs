@@ -13,58 +13,174 @@
   <p class="crumb"><a href="../index.html">Blockies</a> / Concepts</p>
   <h1 id="example">The running example</h1>
   <p class="lede">One small World, used by every concept page. It has a button, two counters, a
-  gauge, a Composite that groups them, a Run that manages the group, and two views with different
-  permissions.</p>
+  gauge made of three cells, a dashboard that contains them, a manager Run, and two views.</p>
 
   <p>Concepts are easier to hold when they all point at the same thing. This page is that thing.
-  Every other concept page refers back to it: "the button", "the dashboard", "the manager run".
-  Nothing here is special; it is an ordinary World, small enough to fit on one screen.</p>
+  Every other concept page refers back to it: "the button", "the gauge", "the dashboard", "the
+  manager". Nothing here is special; it is an ordinary World, small enough to fit on one screen.</p>
 
   <h2>The cast</h2>
 
   <div class="mermaid"><script type="text/plain">
 flowchart TB
-  subgraph D["Composite: dashboard"]
-    B["button<br/>state: pressed"]
-    C1["counter 1<br/>state: count"]
-    C2["counter 2<br/>state: count"]
-    G["gauge<br/>compute: display"]
-    F["fold: total<br/>sum of both counts"]
-  end
-  M["manager Blockie<br/>hosts the orchestrator Run"]
-  B -- "on_toggle" --> C1
-  B -- "on_toggle" --> C2
-  C1 -- "count" --> G
-  C1 -- "count" --> F
-  C2 -- "count" --> F
-  M -. "reads count" .-> C1
-  M -. "dispatches increment" .-> C2
+  D["Composite: dashboard<br/>brain: managerBlockie"]
+  B["Blockie: button<br/>member"]
+  C1["Blockie: counter1<br/>member"]
+  C2["Blockie: counter2<br/>member"]
+  G["Composite: gaugeWidget<br/>member"]
+  GB["Blockie: gaugeBrain<br/>brain of gauge"]
+  P0["Blockie: gaugeSegment0<br/>part"]
+  P1["Blockie: gaugeSegment1<br/>part"]
+  D --> B
+  D --> C1
+  D --> C2
+  D --> G
+  G --> GB
+  G --> P0
+  G --> P1
   </script></div>
 
   <table>
     <thead><tr><th>Thing</th><th>Kind</th><th>What it is for</th></tr></thead>
     <tbody>
-      <tr><td><strong>button</strong></td><td>Blockie</td><td>Holds <code>pressed</code>; toggles on <code>on_press</code>; emits <code>on_toggle</code>.</td></tr>
-      <tr><td><strong>counter 1</strong></td><td>Blockie</td><td>Holds <code>count</code>; increments on <code>increment</code>.</td></tr>
-      <tr><td><strong>counter 2</strong></td><td>Blockie</td><td>The same Blueprint as counter 1, with a different config.</td></tr>
-      <tr><td><strong>gauge</strong></td><td>Blockie</td><td>No mutable state; computes <code>display</code> from <code>value</code> and config.</td></tr>
-      <tr><td><strong>dashboard</strong></td><td>Composite</td><td>Groups the four members; exposes <code>press</code>, <code>total</code>, and <code>display</code> as aliases.</td></tr>
-      <tr><td><strong>manager</strong></td><td>Blockie + Run</td><td>Hosts the <code>orchestrator</code> Run; reads the count; dispatches increments.</td></tr>
+      <tr><td><strong>button</strong></td><td>Blockie, 1 cell</td><td>Holds <code>pressed</code>; toggles on <code>on_press</code>; emits <code>on_toggle</code>.</td></tr>
+      <tr><td><strong>counter1</strong></td><td>Blockie, 1 cell</td><td>Holds <code>count</code>; increments on <code>increment</code>.</td></tr>
+      <tr><td><strong>counter2</strong></td><td>Blockie, 1 cell</td><td>The same Blueprint as counter1, with a different config.</td></tr>
+      <tr><td><strong>gaugeWidget</strong></td><td>Composite, 3 cells</td><td>A gauge: one brain and two visual segments.</td></tr>
+      <tr><td><strong>gaugeBrain</strong></td><td>Blockie, brain</td><td>Owns the gauge's behavior: reads <code>count</code>, computes <code>level</code> and <code>display</code>.</td></tr>
+      <tr><td><strong>gaugeSegment0/1</strong></td><td>Blockie, parts</td><td>Render the gauge's segments. They compute <code>fill</code> from <code>level</code>.</td></tr>
+      <tr><td><strong>dashboard</strong></td><td>Composite, 5 children</td><td>One brain and four members: the button, both counters, and the gauge Composite.</td></tr>
+      <tr><td><strong>managerBlockie</strong></td><td>Blockie, brain</td><td>The dashboard's brain; hosts the <code>orchestrator</code> Run.</td></tr>
       <tr><td><strong>presenter</strong></td><td>Actor</td><td>May press the button and read the total.</td></tr>
       <tr><td><strong>audience</strong></td><td>Actor</td><td>May read the display, but not press or mutate.</td></tr>
     </tbody>
   </table>
 
-  <h2>The two Blueprints that carry most of the lesson</h2>
-  <p>A Blueprint is the plan for a Blockie. The button and the counter are small enough to read in
-  full, and they show the difference between <strong>config</strong>, <strong>Blockie state</strong>,
-  <strong>compute</strong>, and <strong>reduce</strong>.</p>
+  <p>The two Composites are the point. The gauge is a multi-cell widget: its brain owns the
+  behavior, its parts render the segments. The dashboard is a larger Composite: its brain is the
+  manager, and its members are independent widgets, one of which is the gauge Composite.</p>
+
+  <h2>The gauge: one brain, two parts</h2>
+  <p>The gauge is three cells. The brain is a Blockie; the two segments are Blockies. The brain
+  listens to <code>count</code>, computes a normalized <code>level</code>, and publishes it to both
+  parts. Each part computes its own <code>fill</code> from <code>level</code> and its
+  <code>index</code> config.</p>
+
+  <div class="card">
+    <h3>gauge@1 — the brain</h3>
+    <pre><code>blueprint gauge@1
+  appearance: gauge-frame-2d + renderer/gauge
+
+  state:  {}                          // compute-only
+  config: { min: 0, max: 100, unit: "%", segments: 2 }
+
+  ports:
+    count    value in  number
+    level    value out number, producer: compute
+    display  value out string, producer: compute
+
+  compute(state, config, count):
+    level   = clamp((count - config.min) / (config.max - config.min), 0, 1)
+    display = format(count, config.unit)</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>gauge-segment@1 — a part</h3>
+    <pre><code>blueprint gauge-segment@1
+  appearance: gauge-segment-2d + renderer/segment
+
+  state:  {}                          // compute-only
+  config: { index: integer, segments: integer }
+
+  ports:
+    level  value in  number
+    fill   value out number, producer: compute
+
+  compute(state, config, level):
+    fill = clamp(level * config.segments - config.index, 0, 1)</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>gaugeWidget — the Composite</h3>
+    <pre><code>composite gaugeWidget
+  brain: gaugeBrain
+  parts:
+    gaugeSegment0
+    gaugeSegment1
+
+  aliases:
+    count    -> gaugeBrain.count
+    display  -> gaugeBrain.display
+
+  connections:
+    gaugeBrain.level -> gaugeSegment0.level
+    gaugeBrain.level -> gaugeSegment1.level</code></pre>
+  </div>
+
+  <p>The Parts' <code>index</code> configs live on the Blockies, not on the Composite:
+  <code>gaugeSegment0</code> has <code>config.index = 0</code>, and <code>gaugeSegment1</code> has
+  <code>config.index = 1</code>. The Composite only holds the role edges.</p>
+
+  <p>The gauge has no Run. Its brain is a compute-only Blockie: it reads a value, computes values,
+  and finishes inside the transaction. A Run would be needed only if the gauge had to wait, call
+  outside, or be cancelled.</p>
+
+  <h2>The dashboard: one brain, four members</h2>
+  <p>The dashboard is a Composite of independent widgets. Its brain is the manager Blockie; its
+  members are the button, both counters, and the gauge Composite. The gauge is a member, not a
+  part, because it has its own brain and its own behavior.</p>
+
+  <div class="card">
+    <h3>dashboard — the Composite</h3>
+    <pre><code>composite dashboard
+  brain: managerBlockie
+  members:
+    button       { role: member }
+    counter1     { role: member }
+    counter2     { role: member }
+    gaugeWidget  { role: member }
+
+  aliases:
+    press    -> button.on_press
+    count    -> counter1.count
+    display  -> gaugeWidget.display
+    status   -> managerBlockie.status
+
+  fold total = sum(counter1.count, counter2.count)
+  manager: orchestrator, hosted by managerBlockie
+  presentation: { label: "Sales dashboard", body: gaugeWidget }</code></pre>
+  </div>
+
+  <p>The manager Run claims <code>on_tick</code>, reads <code>counter1.count</code>, and publishes
+  <code>status</code>. It can dispatch to Members; it cannot dispatch to the gauge's parts, because
+  parts are not in its <code>memberSet</code>.</p>
+
+  <div class="card">
+    <h3>orchestrator@1 — the manager Run</h3>
+    <pre><code>process orchestrator@1
+  stateType: { ticks: integer, last: string }
+
+  host:
+    claims:    [ on_tick ]
+    reads:     [ count ]
+    publishes: [ status ]
+
+  step(state, config, reads, inbox, grant):
+    if inbox is not empty:
+      state.ticks += 1
+    state.last = reads.count &gt; 10 ? "high" : "ok"
+    publish status = state.last
+    wait timer { after: 60s }</code></pre>
+  </div>
+
+  <h2>The button and the counters</h2>
+  <p>These are single-cell Blockies. The button has a reducer and a compute; the counter has a
+  reducer and a compute. Neither needs a Run.</p>
 
   <div class="card">
     <h3>button@1</h3>
     <pre><code>blueprint button@1
   appearance: rounded-rect-2d + renderer/button
-
   state:  { pressed: boolean }   initial { pressed: false }
   config: { label: string }      defaults { label: "Press" }
 
@@ -86,7 +202,6 @@ flowchart TB
     <h3>counter@1</h3>
     <pre><code>blueprint counter@1
   appearance: rounded-rect-2d + renderer/counter
-
   state:  { count: integer }    initial { count: 0 }
   config: { step: integer }     defaults { step: 1 }
 
@@ -102,108 +217,34 @@ flowchart TB
     count = state.count</code></pre>
   </div>
 
-  <p>Two Blockies can share a Blueprint and differ only in config. Counter 1 and counter 2 are both
-  <code>counter@1</code>; one might have <code>step: 1</code> and the other <code>step: 10</code>.
-  That is the point of config: it parameterises the instance without forking the Blueprint.</p>
-
   <h2>The flow, end to end</h2>
-  <p>A presenter presses the button. One transaction carries the event through the reducer, the
-  counter, the gauge, and the commit. This is the sequence every concept page will refer to.</p>
+  <p>A presenter presses the button. The counter increments, the gauge brain recomputes, and the
+  gauge segments recompute. The document changes only the button and counter rows; the gauge is
+  compute-only.</p>
 
   <div class="mermaid"><script type="text/plain">
 sequenceDiagram
   actor P as Presenter
   participant B as button
   participant C as counter 1
-  participant G as gauge
-  participant V as committed view
+  participant GB as gaugeBrain
+  participant GS as gauge segments
+  participant V as view
   P->>B: deliver on_press
   B->>B: reduce: toggle pressed
   B->>C: emit on_toggle
   C->>C: reduce: count += step
-  C->>G: value count
-  G->>G: compute: display
-  G-->>V: generation N+1
+  C->>GB: value count
+  GB->>GB: compute level, display
+  GB->>GS: value level
+  GS->>GS: compute fill
+  GS-->>V: generation N+1
   </script></div>
 
-  <p>Three different time scales appear in that diagram, and keeping them apart is most of the
-  model:</p>
-
-  <table>
-    <thead><tr><th>Step</th><th>Who acts</th><th>What changes</th><th>How long it lasts</th></tr></thead>
-    <tbody>
-      <tr><td>deliver <code>on_press</code></td><td>the presenter's principal</td><td>nothing yet</td><td>one boundary check</td></tr>
-      <tr><td>reduce <code>on_press</code></td><td>button's reducer</td><td>button's Blockie state</td><td>one event, one transaction</td></tr>
-      <tr><td>reduce <code>on_toggle</code></td><td>counter's reducer</td><td>counter's Blockie state</td><td>the same transaction, later in the event phase</td></tr>
-      <tr><td>compute <code>display</code></td><td>gauge's compute</td><td>nothing; it returns a value</td><td>the value phase of the same transaction</td></tr>
-      <tr><td>commit</td><td>the engine</td><td>a new generation</td><td>one commit</td></tr>
-    </tbody>
-  </table>
-
-  <h2>The Composite</h2>
-  <p>The dashboard is a grouping, not a Blockie. It owns membership edges, aliases, a fold, and a
-  manager designation. It has no ports of its own: the aliases <em>are</em> its interface.</p>
-
-  <div class="card">
-    <h3>dashboard</h3>
-    <pre><code>composite dashboard
-  origin: grouping
-
-  members:
-    button
-    counter 1
-    counter 2
-    gauge
-
-  aliases:
-    press    -> button.on_press
-    total    -> fold(sum, [counter 1.count, counter 2.count])
-    display  -> gauge.display
-
-  manager: manager Blockie
-  presentation: { label: "Sales dashboard", body: gauge }</code></pre>
-  </div>
-
-  <p>Two connections make the flow work. They are separate from membership: being in the same
-  Composite does not connect anything.</p>
-
-  <pre><code>connection button.on_toggle -> counter 1.increment
-connection button.on_toggle -> counter 2.increment
-connection counter 1.count  -> gauge.value</code></pre>
-
-  <h2>The Run</h2>
-  <p>The manager Blockie hosts a Run. The Run has its own state, claims one event input, reads one
-  value, and publishes one process output. It never writes the manager's Blockie state.</p>
-
-  <div class="card">
-    <h3>orchestrator@1</h3>
-    <pre><code>process orchestrator@1
-  stateType: { ticks: integer, last: string }
-
-  host:
-    claims:    [ on_tick ]
-    reads:     [ count ]
-    publishes: [ status ]
-
-  step(state, config, reads, inbox, grant):
-    if inbox is not empty:
-      state.ticks += 1
-    if reads.count > 10:
-      state.last = "high"
-    else:
-      state.last = "ok"
-    publish status = state.last
-    wait timer { after: 60s }</code></pre>
-  </div>
-
-  <p>The Run is what makes the manager an <em>activity</em> rather than a value. It can wait, be
-  cancelled, be observed, and survive a restart. The counter does not need any of that: it is a
-  reducer plus a compute, and it finishes inside one transaction.</p>
-
-  <h2>Two views, one World</h2>
-  <p>The presenter and the audience see the same Blockies. They differ in viewport, renderer, and
-  grant set. The audience view is not a copy of the World, and the renderer is not the thing that
-  hides the button.</p>
+  <h2>The two views</h2>
+  <p>The presenter and the audience see the same World. They differ in viewport, renderer, and
+  grant set. The audience view is not a copy, and the renderer is not the thing that hides the
+  button.</p>
 
   <table>
     <thead><tr><th>View</th><th>Sees</th><th>May do</th></tr></thead>
@@ -215,46 +256,53 @@ connection counter 1.count  -> gauge.value</code></pre>
 
   <h2>What to notice</h2>
   <ul>
-    <li><strong>The button and the counter share a shape.</strong> Both are Blockies with a
-    Blueprint, config, state, and ports. The difference is their Blueprint, not their kind.</li>
-    <li><strong>The gauge has no mutable state.</strong> Its output is a pure function of its input
-    and config. A Type does not need state to be useful.</li>
-    <li><strong>The dashboard has no ports.</strong> Its interface is the alias table. A Composite
-    is not a Blockie with extra steps.</li>
-    <li><strong>The manager Run is not the manager Blockie.</strong> The Blockie is the in-world
-    body; the Run is the activity. The Run owns its state; the Blockie owns its own.</li>
-    <li><strong>Membership, placement, connection, and authority are four different facts.</strong>
-    The counter is a member of the dashboard, placed at a coordinate, connected to the button, and
-    readable by the audience. None of those implies the others.</li>
+    <li><strong>The gauge is a Composite, not a Blockie.</strong> It is three cells: one brain and
+    two parts. A single Blockie cannot grow to three cells.</li>
+    <li><strong>The dashboard is also a Composite.</strong> Its members are independent widgets;
+    one of them is the gauge Composite. The tree is recursive.</li>
+    <li><strong>Brain and Manager are different roles.</strong> <code>gaugeBrain</code> is a
+    compute-only brain. <code>managerBlockie</code> is the dashboard's brain and hosts the manager
+    Run.</li>
+    <li><strong>Parts and Members are different roles.</strong> The gauge segments are parts:
+    visual, vacant, driven by the brain. The button, counters, and gauge are members: independent,
+    with their own behavior.</li>
+    <li><strong>Identities and Blueprints are different.</strong> <code>gaugeBrain</code> is a
+    Blockie identity; <code>gauge@1</code> is the Blueprint it pins.</li>
+    <li><strong>The gauge can grow.</strong> Add another <code>gauge-segment@1</code> with the next
+    <code>index</code>; the brain's <code>segments</code> config and <code>level</code> fan-out
+    handle it. The dashboard does not change.</li>
   </ul>
 
   <section class="check">
     <h2>Check yourself</h2>
     <details>
-      <summary>Why can counter 1 and counter 2 share a Blueprint but behave differently?</summary>
-      <p>Because the Blueprint declares the shape and the logic, and config supplies the per-instance
-      parameters. If one has <code>step: 1</code> and the other <code>step: 10</code>, the same
-      reducer produces different counts. If the behaviour itself differed, they would need different
-      Blueprints.</p>
+      <summary>How many cells does the gauge have?</summary>
+      <p>Three: one brain (<code>gaugeBrain</code>) and two parts (<code>gaugeSegment0</code>,
+      <code>gaugeSegment1</code>).</p>
     </details>
     <details>
-      <summary>Why is the dashboard not a Blockie?</summary>
-      <p>Because it has no Blueprint, no state, no ports, and no appearance of its own. It is a
-      grouping: membership edges, an alias table, a fold, a manager designation, and optional
-      presentation. Making it a Blockie would give it a second identity and a second way to be
-      controlled.</p>
+      <summary>Is the gauge a Blockie?</summary>
+      <p>No. It is a Composite. The brain and each part are Blockies; the gauge is the assembly.</p>
     </details>
     <details>
-      <summary>Why does the gauge not need a reducer?</summary>
-      <p>It has no event input and no mutable state. Its output is computed from its input value and
-      config. A reducer is only needed when an event must change owned state.</p>
+      <summary>Which is the dashboard's brain, and which is its manager?</summary>
+      <p><code>managerBlockie</code> is the brain. The <code>orchestrator</code> Run it hosts is the
+      manager. The brain is a Blockie role; the manager is a Run role.</p>
     </details>
     <details>
-      <summary>Who may press the button: the presenter, the audience, or the manager Run?</summary>
-      <p>The presenter, through a <code>deliver</code> grant on the <code>press</code> alias. The
-      audience is read-only in this example. The manager Run holds <code>composite.dispatch</code>,
-      so it can send an addressed event to a member, but that is a different path from an external
-      <code>deliver</code>; in this example it dispatches increments, not presses.</p>
+      <summary>Does the gauge have a Run?</summary>
+      <p>No. Its brain is compute-only. A Run is only needed when the activity must wait, call
+      outside, be observed, or be cancelled.</p>
+    </details>
+    <details>
+      <summary>Can the dashboard's manager dispatch to a gauge segment?</summary>
+      <p>No. The segments are Parts, not Members. They are not in the manager's
+      <code>memberSet</code>; the gauge's brain drives them internally.</p>
+    </details>
+    <details>
+      <summary>What is <code>gauge@1</code>?</summary>
+      <p>A Blueprint reference: the id <code>gauge</code>, version 1. It is not an identity.
+      <code>gaugeBrain</code> is the Blockie that pins it.</p>
     </details>
   </section>
 

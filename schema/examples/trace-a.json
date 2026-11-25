@@ -138,9 +138,9 @@
       "id": "C",
       "origin": { "kind": "grouping" },
       "members": [
-        { "entity": { "blockie": "pixelA" }, "provenance": "grouping" },
-        { "entity": { "blockie": "pixelB" }, "provenance": "grouping" },
-        { "entity": { "blockie": "computerM" }, "provenance": "grouping" }
+        { "entity": { "blockie": "pixelA" }, "role": "part", "provenance": "grouping" },
+        { "entity": { "blockie": "pixelB" }, "role": "part", "provenance": "grouping" },
+        { "entity": { "blockie": "computerM" }, "role": "brain", "provenance": "grouping" }
       ],
       "manager": { "run": "R1", "epoch": 1 },
       "aliases": [
@@ -210,7 +210,7 @@
       "inbox": [],
       "grant": {
         "composite": "C",
-        "memberSet": [{ "blockie": "pixelA" }, { "blockie": "pixelB" }]
+        "memberSet": [{ "blockie": "computerM" }]
       }
     }
   }

@@ -19,7 +19,8 @@
     <span class="label">Running example</span>
     <p>In the <a href="example.html">dashboard</a>, counter 1 is a member of the Composite, placed
     at a coordinate, connected to the button, hosted by no Run, watched by the audience, and
-    mutable by an agent. That is five different facts about one Blockie.</p>
+    mutable by an agent. The gauge is a member Composite: its brain and parts are internal to it.
+    That is six different facts about one tree.</p>
   </div>
 
   <h2 id="nine">The same Blockie, nine different facts</h2>
@@ -45,9 +46,9 @@ flowchart TB
     <thead><tr><th>Relationship</th><th>Answers</th><th>Never implies</th><th>Dashboard example</th></tr></thead>
     <tbody>
       <tr><td><strong>Placement</strong></td><td>Where is it?</td><td>membership, control</td><td>counter 1 at (20, 10) inside dashboard</td></tr>
-      <tr><td><strong>Membership</strong></td><td>What is it part of?</td><td>ownership of its activity</td><td>counter 1 is a member of dashboard</td></tr>
-      <tr><td><strong>Nesting</strong></td><td>Which assembly contains which?</td><td>that child members are parent members</td><td>a "sales" Composite inside dashboard</td></tr>
-      <tr><td><strong>Management</strong></td><td>Who coordinates this assembly?</td><td>access to member internals</td><td>manager Blockie designated on dashboard</td></tr>
+      <tr><td><strong>Membership</strong></td><td>What is it part of?</td><td>ownership of its activity</td><td>counter1 is a member of dashboard; the gauge is a member Composite</td></tr>
+      <tr><td><strong>Nesting</strong></td><td>Which assembly contains which?</td><td>that child members are parent members</td><td>gaugeWidget inside dashboard</td></tr>
+      <tr><td><strong>Management</strong></td><td>Who coordinates this assembly?</td><td>access to member internals</td><td>managerBlockie's Run designated on dashboard; not the gauge's brain</td></tr>
       <tr><td><strong>Hosting</strong></td><td>Which Blockie represents this activity?</td><td>membership</td><td>manager Blockie hosts orchestrator</td></tr>
       <tr><td><strong>Parentage</strong></td><td>Which activity spawned which?</td><td>grouping or authority</td><td>orchestrator spawns a worker Run</td></tr>
       <tr><td><strong>Communication</strong></td><td>What talks to what?</td><td>permission</td><td>button.on_toggle → counter1.increment</td></tr>
@@ -55,6 +56,8 @@ flowchart TB
       <tr><td><strong>Lifecycle authority</strong></td><td>Who may stop this activity?</td><td>management</td><td>a parent Run may cancel its child</td></tr>
     </tbody>
   </table>
+
+  <p>Membership carries a role: <code>brain</code>, <code>part</code>, or <code>member</code>. The role is part of membership, not a separate relationship. The gauge's segments are parts; the gauge is a member of the dashboard; the dashboard's managerBlockie is a member with role <code>brain</code>.</p>
 
   <p>The analogy is an office. The seating chart is placement. The team roster is membership. The
   division tree is nesting. The standup lead is management. The person whose badge opens the door is
@@ -75,8 +78,8 @@ flowchart TB
   </div>
   <div class="card">
     <h3>"It's the manager, so it can read the members' state"</h3>
-    <p>No. Management grants dispatch and nothing else. The manager sees what its own ports are
-    wired to.</p>
+    <p>No. Management grants dispatch and nothing else. It cannot read a Member's state, and it
+    cannot reach the gauge's Brain or Parts; it sees only the gauge Composite's public aliases.</p>
   </div>
   <div class="card">
     <h3>"It's watching, so it can act"</h3>
@@ -141,7 +144,7 @@ flowchart LR
     <thead><tr><th>Actor</th><th>Grant</th><th>Can</th><th>Cannot</th></tr></thead>
     <tbody>
       <tr><td><strong>presenter</strong></td><td><code>deliver</code> on <code>press</code>; <code>read</code> on <code>total</code></td><td>press the button, read the total</td><td>add or remove members</td></tr>
-      <tr><td><strong>audience</strong></td><td><code>read</code> on <code>display</code></td><td>see the gauge</td><td>press, read the total, mutate</td></tr>
+      <tr><td><strong>audience</strong></td><td><code>read</code> on <code>display</code></td><td>see the gauge display alias, not its parts</td><td>press, read the total, mutate</td></tr>
       <tr><td><strong>agent</strong></td><td><code>mutate</code> on dashboard; <code>run</code> on orchestrator</td><td>add a counter, attach or cancel the run</td><td>read member state without a <code>read</code> grant</td></tr>
       <tr><td><strong>manager Run</strong></td><td><code>composite.dispatch</code></td><td>dispatch an event to a member</td><td>read member state, change membership, write the document</td></tr>
     </tbody>

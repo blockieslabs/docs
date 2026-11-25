@@ -15,6 +15,9 @@ BPS defines how a Run is defined, attached, scheduled, stepped, waited, cancelle
 It does not define Composite structure (BCS) or the document model (BCM). Scheduling order between
 phases is defined here; document transactions are BCS.
 
+The Brain is a Blockie role; the Manager is a Run role. A Brain may host the Manager Run, but being
+the Brain does not grant management authority.
+
 ## 3. Definitions
 
 **P-1.** A Process definition is immutable and digest-pinned. It declares:
@@ -74,9 +77,10 @@ from parentage.
 
 ## 6. Attachment
 
-**P-12.** Attachment is atomic. It MUST verify: the host exists and is vacant; the definition
-resolves and its digest matches; P-3 holds; the World policy permits the run; and, if a manager
-designation is part of the same transaction, the host is a direct member of that Composite.
+**P-12.** Attachment is atomic. It MUST verify: the host exists and is vacant; the host is not a
+Part; the definition resolves and its digest matches; P-3 holds; the World policy permits the run;
+and, if a manager designation is part of the same transaction, the host is a direct Brain or Member
+of that Composite.
 
 **P-13.** Attachment MUST NOT change the host's Blueprint, state, configuration, or placement.
 
@@ -167,13 +171,15 @@ explicit authorised response.
 
 ## 13. Dispatch
 
-**P-36.** A Run holding a grant may dispatch an addressed event to a member in its `memberSet`.
+**P-36.** A Run holding a grant may dispatch an addressed event to a Member or the Brain in its
+`memberSet`. It MUST NOT dispatch to a Part.
 
 **P-37.** Dispatch creates a new event with a new ID and `causation` equal to the event being
 handled. The target MUST be validated against `memberSet` before the event is created.
 
-**P-38.** The grant is materialised at designation from the Composite's direct members and is
-invalidated in the same transaction as any membership change that removes a listed member.
+**P-38.** The grant is materialised at designation from the Composite's direct Members and its
+Brain, excluding Parts, and is invalidated in the same transaction as any membership change that
+removes a listed member.
 
 ## 14. Cancellation
 

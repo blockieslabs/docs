@@ -76,7 +76,7 @@ goes to the blueprint reducer and never appears here.
 | Authority | World document transaction only |
 | Durability | Transient; the settled states are derivable from F-01 |
 | Recovery | An interrupted `attaching`/`detaching` at load resolves to `unattached` (fail-safe) |
-| Projection | This is what makes Blockie occupancy derivable. It is not itself stored as a mode |
+| Projection | This is what makes Blockie occupancy derivable. It is not itself stored as a mode. A Part is always vacant; a Run cannot attach to it |
 
 ### F-05 — Composite Membership Edge
 
@@ -85,9 +85,9 @@ goes to the blueprint reducer and never appears here.
 | Level | A0 schema, A1 transaction |
 | States | `committed`, `removed` |
 | Authority | World document transaction |
-| Durability | Durable, with provenance (`grouping` or `template:<local_id>`) |
+| Durability | Durable, with role (`brain`, `part`, `member`) and provenance (`grouping` or `template:<local_id>`) |
 | Recovery | A member whose provenance does not match its pinned template is a materialisation error, not a repair |
-| Projection | Membership list per Composite |
+| Projection | Child list per Composite, with roles |
 
 No `proposed` state: document transactions are atomic, so a half-added member cannot exist.
 
@@ -100,7 +100,7 @@ No `proposed` state: document transactions are atomic, so a half-added member ca
 | Authority | World document transaction |
 | Durability | Only `assembled` is durable, encoded as presence in `composites`. `dissolved` is removal, not a stored state (D-034) |
 | Recovery | `forming` and `dissolving` are transaction-internal and cannot appear at load |
-| Projection | Existence in the world, member count |
+| Projection | Existence in the world, child count, brain identity |
 
 ### F-07 — Composite Management
 
@@ -117,6 +117,9 @@ No `proposed` state: document transactions are atomic, so a half-added member ca
 The `run_terminal` case must commit run status, host occupancy, and designation in one
 transition. Splitting them is what produces a Composite that claims a manager it does not
 have.
+
+The Manager is a Run role; the Brain is a Blockie role. The manager designation does not make
+the Manager's host the Brain, and being the Brain does not make a Run the Manager.
 
 ### F-08 — Composite Interface Mode (withdrawn)
 

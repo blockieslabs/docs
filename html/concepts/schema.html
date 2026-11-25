@@ -18,8 +18,9 @@
   <div class="callout">
     <span class="label">Running example</span>
     <p>The <a href="example.html">dashboard</a> is one World. This page shows a reduced version of it
-    as JSON: one counter, one Composite, one placement. The full example has a button, a second
-    counter, a gauge, a manager, and two runs.</p>
+    as JSON: a two-cell gauge (one Brain, one Part), two placements, and one internal connection.
+    The full example has a button, two counters, the gauge, a dashboard Composite, and a Manager
+    Run.</p>
   </div>
 
   <h2 id="tables">The tables</h2>
@@ -51,88 +52,148 @@
   </div>
 
   <h2 id="reduced-world">A reduced World</h2>
-  <p>This is the smallest useful slice of the dashboard: one counter, one Composite, one placement.
-  It has the shape the schema expects; the digests are elided.</p>
+  <p>This is a two-cell gauge: one Brain and one Part. It has the shape the schema expects; the
+  digests are elided. The full gauge has two Parts, but one is enough to show the roles.</p>
 
   <pre><code>{
   "protocol": "blockies/0.1",
-  "id": "world-dashboard",
+  "id": "world-gauge",
   "frame": { "id": "frame", "space": "2d" },
 
   "definitions": {
     "published": { "blueprints": [], "processes": [] },
     "embedded": {
-      "blueprints": [{
-        "id": "counter",
-        "version": "1.0.0",
-        "digest": "sha256:...",
-        "appearance": {
-          "geometry": "rounded-rect-2d",
-          "renderer": { "id": "renderer.counter", "version": "1", "digest": "sha256:..." }
+      "blueprints": [
+        {
+          "id": "gauge",
+          "version": "1.0.0",
+          "digest": "sha256:...",
+          "appearance": {
+            "geometry": "gauge-frame-2d",
+            "renderer": { "id": "renderer.gauge", "version": "1", "digest": "sha256:..." }
+          },
+          "state": {
+            "type": { "kind": "record", "properties": {}, "additional_properties": false },
+            "initial": {}
+          },
+          "config": {
+            "type": { "kind": "record",
+                      "properties": {
+                        "segments": { "kind": "primitive", "name": "integer" },
+                        "min": { "kind": "primitive", "name": "number" },
+                        "max": { "kind": "primitive", "name": "number" },
+                        "unit": { "kind": "primitive", "name": "string" }
+                      },
+                      "additional_properties": false },
+            "defaults": { "segments": 1, "min": 0, "max": 100, "unit": "%" }
+          },
+          "ports": [
+            { "id": "count", "direction": "in", "kind": "value",
+              "type": { "kind": "primitive", "name": "number" } },
+            { "id": "level", "direction": "out", "kind": "value",
+              "type": { "kind": "primitive", "name": "number" }, "producer": "compute" },
+            { "id": "display", "direction": "out", "kind": "value",
+              "type": { "kind": "primitive", "name": "string" }, "producer": "compute" }
+          ]
         },
-        "state": {
-          "type": { "kind": "record",
-                    "properties": { "count": { "kind": "primitive", "name": "integer" } },
-                    "additional_properties": false },
-          "initial": { "count": 0 }
-        },
-        "config": {
-          "type": { "kind": "record",
-                    "properties": { "step": { "kind": "primitive", "name": "integer" } },
-                    "additional_properties": false },
-          "defaults": { "step": 1 }
-        },
-        "ports": [
-          { "id": "increment", "direction": "in", "kind": "event",
-            "type": { "kind": "record", "properties": {}, "additional_properties": false } },
-          { "id": "count", "direction": "out", "kind": "value",
-            "type": { "kind": "primitive", "name": "integer" }, "producer": "compute" }
-        ]
-      }],
+        {
+          "id": "gauge-segment",
+          "version": "1.0.0",
+          "digest": "sha256:...",
+          "appearance": {
+            "geometry": "gauge-segment-2d",
+            "renderer": { "id": "renderer.segment", "version": "1", "digest": "sha256:..." }
+          },
+          "state": {
+            "type": { "kind": "record", "properties": {}, "additional_properties": false },
+            "initial": {}
+          },
+          "config": {
+            "type": { "kind": "record",
+                      "properties": {
+                        "index": { "kind": "primitive", "name": "integer" },
+                        "segments": { "kind": "primitive", "name": "integer" }
+                      },
+                      "additional_properties": false },
+            "defaults": { "index": 0, "segments": 1 }
+          },
+          "ports": [
+            { "id": "level", "direction": "in", "kind": "value",
+              "type": { "kind": "primitive", "name": "number" } },
+            { "id": "fill", "direction": "out", "kind": "value",
+              "type": { "kind": "primitive", "name": "number" }, "producer": "compute" }
+          ]
+        }
+      ],
       "processes": []
     }
   },
 
   "blockies": {
-    "counter1": {
-      "id": "counter1",
-      "blueprint": { "id": "counter", "version": "1.0.0", "digest": "sha256:..." },
-      "config": { "step": 1 },
-      "state": { "count": 0 }
+    "gaugeBrain": {
+      "id": "gaugeBrain",
+      "blueprint": { "id": "gauge", "version": "1.0.0", "digest": "sha256:..." },
+      "config": { "segments": 1, "min": 0, "max": 100, "unit": "%" },
+      "state": {}
+    },
+    "gaugeSegment0": {
+      "id": "gaugeSegment0",
+      "blueprint": { "id": "gauge-segment", "version": "1.0.0", "digest": "sha256:..." },
+      "config": { "index": 0, "segments": 1 },
+      "state": {}
     }
   },
 
   "composites": {
-    "dashboard": {
-      "id": "dashboard",
+    "gaugeWidget": {
+      "id": "gaugeWidget",
       "origin": { "kind": "grouping" },
       "members": [
-        { "entity": { "blockie": "counter1" }, "provenance": "grouping" }
+        { "entity": { "blockie": "gaugeBrain" }, "role": "brain", "provenance": "grouping" },
+        { "entity": { "blockie": "gaugeSegment0" }, "role": "part", "provenance": "grouping" }
       ],
       "aliases": [
-        { "id": "count", "direction": "out", "kind": "value",
-          "type": { "kind": "primitive", "name": "integer" },
-          "ref": { "member": { "blockie": "counter1" }, "port": "count" } }
+        { "id": "count", "direction": "in", "kind": "value",
+          "type": { "kind": "primitive", "name": "number" },
+          "ref": { "member": { "blockie": "gaugeBrain" }, "port": "count" } },
+        { "id": "display", "direction": "out", "kind": "value",
+          "type": { "kind": "primitive", "name": "string" },
+          "ref": { "member": { "blockie": "gaugeBrain" }, "port": "display" } }
       ],
       "folds": []
     }
   },
 
   "placements": {
-    "counter1": {
-      "scope": { "composite": "dashboard" },
-      "transform": { "translate": [20, 10], "scale": 1 },
+    "gaugeWidget": {
+      "scope": { "frame": "frame" },
+      "transform": { "translate": [100, 50], "scale": 1 },
       "layer": 0
+    },
+    "gaugeBrain": {
+      "scope": { "composite": "gaugeWidget" },
+      "transform": { "translate": [0, 0], "scale": 1 },
+      "layer": 0
+    },
+    "gaugeSegment0": {
+      "scope": { "composite": "gaugeWidget" },
+      "transform": { "translate": [0, 1], "scale": 1 },
+      "layer": 1
     }
   },
 
-  "connections": [],
+  "connections": [
+    { "id": "c1",
+      "from": { "blockie": "gaugeBrain", "port": "level" },
+      "to": { "blockie": "gaugeSegment0", "port": "level" } }
+  ],
+
   "runs": {}
 }</code></pre>
 
   <p>Notice the division of labour. The Blockie owns identity, Blueprint, config, and state. The
-  Composite owns membership and the alias. The placement table owns the coordinate. No table repeats
-  another table's fact.</p>
+  Composite owns the roles and the alias table. The placement table owns the coordinates. No table
+  repeats another table's fact. The gauge itself has no Blueprint; the Brain and the Part do.</p>
 
   <h2 id="blockie">A Blockie is four fields</h2>
   <pre><code>{ "id": "...", "blueprint": {...}, "config": {...}, "state": {...} }</code></pre>
@@ -184,8 +245,9 @@
     <li><strong>Structural</strong> — does it match the schema? Unknown fields are rejected.</li>
     <li><strong>Cross-reference</strong> — does every reference resolve, and does every type relation
     hold?</li>
-    <li><strong>Invariant</strong> — one host per Run, one Composite per Blockie, acyclic
-    containment, one producer per output, and so on.</li>
+    <li><strong>Invariant</strong> — one host per Run, one Composite per Blockie, exactly one
+    Brain, Blockie and vacant Parts, at least one non-Brain child, one producer per output, and so
+    on.</li>
   </ol>
   <p>A structural or cross-reference failure rejects the document. An invariant failure rejects too,
   with one exception: a dangling manager designation is repaired by clearing it, because a crashed
@@ -198,6 +260,9 @@
       <tr><td>Missing reference</td><td>cross-reference</td><td>a connection to a port that does not exist</td><td>reject</td></tr>
       <tr><td>Type mismatch</td><td>cross-reference</td><td>an <code>integer</code> output into a <code>boolean</code> input</td><td>reject</td></tr>
       <tr><td>Two hosts for one Run</td><td>invariant</td><td>a run listed under two Blockies</td><td>reject</td></tr>
+      <tr><td>No Brain or two Brains</td><td>invariant</td><td>a Composite with only Parts</td><td>reject</td></tr>
+      <tr><td>A Part hosts a Run</td><td>invariant</td><td><code>gaugeSegment0</code> has a Run</td><td>reject</td></tr>
+      <tr><td>An alias sources a Part</td><td>invariant</td><td><code>display</code> → <code>gaugeSegment0.fill</code></td><td>reject</td></tr>
       <tr><td>Dangling manager</td><td>invariant</td><td>the manager Run is terminal</td><td>repair: clear it</td></tr>
     </tbody>
   </table>
@@ -207,7 +272,7 @@
     <li><code>schema/blockies-0.schema.json</code> — the machine-readable schema</li>
     <li><code>schema/0001-minimal-model.md</code> — the model with a traceability table</li>
     <li><code>schema/examples/trace-a.json</code> — a complete World that validates</li>
-    <li><code>schema/0002-conformance-fixtures.md</code> — 6 schema, 21 validator, 7 runtime vectors</li>
+    <li><code>schema/0002-conformance-fixtures.md</code> — 6 schema, 28 validator, 7 runtime vectors</li>
   </ul>
 
   <h2 id="mistakes">Common mistakes</h2>
@@ -222,6 +287,9 @@
     things.</li>
     <li><strong>Treating schema-valid as World-valid.</strong> Cross-reference and invariant passes
     exist for a reason.</li>
+    <li><strong>A Composite without a Brain.</strong> A Composite is a Brain plus cells; a loose set
+    of Blockies is not valid.</li>
+    <li><strong>A Part with a Run.</strong> If a Part hosts a Run, it is a Member, not a Part.</li>
   </ol>
 
   <section class="check">

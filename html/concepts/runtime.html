@@ -18,7 +18,7 @@
   <div class="callout">
     <span class="label">Running example</span>
     <p>A presenter presses the <a href="example.html">dashboard</a> button. One transaction carries
-    the click through the button's reducer, the counter's reducer, the gauge's compute, and the
+    the click through the button's reducer, the counter's reducer, the gauge Composite's compute, and the
     commit. This page follows that click.</p>
   </div>
 
@@ -49,7 +49,8 @@ sequenceDiagram
   participant E as engine
   participant B as button
   participant C as counter 1
-  participant G as gauge
+  participant GB as gaugeBrain
+  participant GS as gauge segments
   participant V as view
   P->>E: deliver on_press
   E->>E: accept, validate, stage
@@ -57,8 +58,10 @@ sequenceDiagram
   B-->>E: pressed = true, emit on_toggle
   E->>C: reduce on_toggle
   C-->>E: count = count + step
-  E->>G: compute display
-  G-->>E: "1"
+  E->>GB: compute level, display
+  GB-->>E: level, display
+  E->>GS: compute fill
+  GS-->>E: fills
   E->>E: prepare, commit
   E-->>V: generation N+1
   </script></div>
@@ -71,7 +74,7 @@ sequenceDiagram
       <tr><td><strong>stage</strong></td><td>open a private working copy</td><td>nothing</td></tr>
       <tr><td><strong>event</strong></td><td>button reducer toggles <code>pressed</code>, emits <code>on_toggle</code>; counter reducer increments</td><td>staged only</td></tr>
       <tr><td><strong>process</strong></td><td>no Run is ready in this example</td><td>staged only</td></tr>
-      <tr><td><strong>value</strong></td><td>gauge compute produces <code>display</code></td><td>staged only</td></tr>
+      <tr><td><strong>value</strong></td><td>the gauge brain computes <code>level</code> and <code>display</code>; the segments compute <code>fill</code></td><td>staged only</td></tr>
       <tr><td><strong>prepare</strong></td><td>check invariants, compute hashes</td><td>staged only</td></tr>
       <tr><td><strong>commit</strong></td><td>generation N+1 becomes the truth</td><td>committed</td></tr>
       <tr><td><strong>publish</strong></td><td>views receive the generation</td><td>rendered</td></tr>
@@ -81,7 +84,7 @@ sequenceDiagram
 
   <p>Two details in that table are easy to miss. The counter's reducer runs in the <em>same</em>
   event phase as the button's, because event emissions enqueue before the process phase (P-20). And
-  the gauge's compute runs <em>after</em> every reducer has finished, so it sees the final state of
+  the gauge brain's compute runs <em>after</em> every reducer has finished, so it sees the final state of
   the transaction, not an intermediate one.</p>
 
   <h2 id="staged">Staged versus committed</h2>
@@ -117,7 +120,7 @@ sequenceDiagram
     <tbody>
       <tr><td>Bad event payload or unauthorised actor</td><td>before staging</td><td>rejected, nothing changes</td><td>audience sends <code>on_press</code> without a grant</td></tr>
       <tr><td>Reducer throws or returns invalid state</td><td>transaction</td><td>aborted, nothing commits</td><td>counter returns <code>count: "three"</code></td></tr>
-      <tr><td>Compute throws or returns an invalid value</td><td>one node</td><td>that output becomes <code>error</code>, transaction commits</td><td>gauge divides by zero</td></tr>
+      <tr><td>Compute throws or returns an invalid value</td><td>one node</td><td>that output becomes <code>error</code>, transaction commits</td><td>the gauge brain or a segment divides by zero</td></tr>
       <tr><td>Step throws or exceeds budget</td><td>one run</td><td>the run fails, transaction commits</td><td>orchestrator times out</td></tr>
       <tr><td>Step returns an invalid result</td><td>transaction</td><td>aborted</td><td>orchestrator publishes an undeclared port</td></tr>
     </tbody>
@@ -130,7 +133,7 @@ sequenceDiagram
   <p>When an upstream output is in error or unavailable, downstream consumers become
   <strong>blocked</strong>. They never fall back to the last good value, because that value no
   longer describes anything real.</p>
-  <p>If the counter's <code>count</code> output is in error, the gauge's <code>display</code> is
+  <p>If the counter's <code>count</code> output is in error, the gauge brain's <code>display</code> and the segments' <code>fill</code> are
   blocked. It does not show the last number, and it does not show zero. The same rule applies at
   every layer: no defaults, no stale reads, no silent zero.</p>
 

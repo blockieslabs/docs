@@ -19,7 +19,9 @@
     <span class="label">Running example</span>
     <p>The <a href="example.html">dashboard</a> has a manager Blockie that hosts the
     <code>orchestrator</code> Run. The Run wakes on a timer, reads the counter, and publishes a
-    status. The button and the counters do not need Runs; they finish inside one transaction.</p>
+    status. The button and the counters do not need Runs; they finish inside one transaction. The
+    gauge's Brain is compute-only and has no Run either. That contrast is the subject of this
+    page.</p>
   </div>
 
   <h2 id="three-scales">Three time scales</h2>
@@ -254,6 +256,7 @@ stateDiagram-v2
       <tr><td>a function call</td><td>It can wait between steps and survive a restart.</td></tr>
       <tr><td>a thread</td><td>It is cooperatively scheduled, one step per transaction, with no shared memory.</td></tr>
       <tr><td>a Blockie</td><td>The Blockie is the in-world body; the Run is the activity it hosts.</td></tr>
+      <tr><td>the Brain</td><td>The Brain is a Blockie role that owns the Composite's behavior; the Run is an activity. A Brain may host a Run, or not.</td></tr>
       <tr><td>a process definition</td><td>The definition is the immutable plan; the Run is an instance with state.</td></tr>
       <tr><td>a way to read host state</td><td>It reads declared <code>reads</code> values, never the host's Blockie state.</td></tr>
     </tbody>
@@ -281,6 +284,12 @@ stateDiagram-v2
       <summary>What happens to a claimed event input?</summary>
       <p>The delivery goes to the Run's inbox, not the Blockie's reducer. The two are exclusive; an
       input is reducer-owned or run-owned, never both.</p>
+    </details>
+    <details>
+      <summary>Does the gauge need a Run?</summary>
+      <p>No. Its Brain is compute-only: it reads <code>count</code>, computes <code>level</code>
+      and <code>display</code>, and finishes inside the transaction. Its Parts are compute-only too.
+      A Run would be needed only if the gauge had to wait, call outside, or be cancelled.</p>
     </details>
     <details>
       <summary>Can a manager Run remove a member from its Composite?</summary>

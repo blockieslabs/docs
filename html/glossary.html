@@ -66,9 +66,20 @@
     <dd>One snapshot of state and outputs that a transaction has made the new truth. Renderers read
       only committed generations. <span class="see">→ <a href="concepts/runtime.html">Runtime</a></span></dd>
 
+    <dt id="blockie">Blockie</dt>
+    <dd>One cell: a persistent inhabitant with identity, one Blueprint, config, state, and optional
+      placement. A Blockie cannot change its width or height.
+      <span class="see">→ <a href="concepts/ontology.html">Entities</a></span></dd>
+
+    <dt id="brain">Brain</dt>
+    <dd>The Blockie that owns a Composite's state, ports, and logic. Exactly one per Composite. It is
+      not the Manager; a Brain may host the Manager Run, or not.
+      <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
     <dt id="composite">Composite</dt>
-    <dd>An explicit assembly of Blockies and nested Composites. Not a Blockie, not a Blueprint, no ports
-      of its own. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+    <dd>A multi-cell widget: exactly one Brain Blockie, zero or more Part Blockies, and zero or more
+      Members (Blockies or nested Composites). It has no Blueprint, state, or ports of its own; the
+      Brain provides the behavior. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
 
     <dt id="compute">compute</dt>
     <dd>A pure function that turns state, configuration, and inputs into output values. Cannot change
@@ -153,19 +164,28 @@
       <span class="see">→ <a href="concepts/space.html">Space</a></span></dd>
 
     <dt id="manager">manager</dt>
-    <dd>The one member of a Composite authorised to dispatch to other members. Must be a direct
-      member and occupied. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+    <dd>The Run hosted by a Brain or Member, authorised to dispatch to Members and the Brain. Must be
+      occupied and never a Part. It is not the Brain.
+      <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
 
     <dt id="materialisation">materialisation</dt>
     <dd>Turning a template into real instances and relationships, with fresh identities.
       <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
 
     <dt id="member">member</dt>
-    <dd>An entity directly contained by a Composite. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+    <dd>A direct child of a Composite with role <code>member</code>: an independent Blockie or nested
+      Composite. Distinct from a Part (visual) and the Brain (controller).
+      <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+
+    <dt id="part">Part</dt>
+    <dd>A Blockie that renders a slice of a Composite. It must be vacant and is driven by the Brain;
+      it is not an alias, fold, or dispatch source.
+      <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
 
     <dt id="membership">membership</dt>
-    <dd>The explicit fact that an entity is directly inside a Composite. Never inferred from
-      proximity or appearance. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
+    <dd>The explicit fact that a child is directly inside a Composite. Never inferred from proximity
+      or appearance. Each edge carries a role: <code>brain</code>, <code>part</code>, or
+      <code>member</code>. <span class="see">→ <a href="concepts/composites.html">Composites</a></span></dd>
 
     <dt id="model-state">Blockie state</dt>
     <dd>Persistent data owned by a Blockie, changed only by its own reducer. Formerly called

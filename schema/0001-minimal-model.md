@@ -64,8 +64,8 @@ type Composite = {
   origin:
     | { kind: "grouping" }                                    // D-001
     | { kind: "template"; definition: DefRef; memberMap: Record<string, EntityRef> };
-  members: MemberEdge[];
-  manager?: { run: Id; epoch: number };                       // F-07, D-018
+  members: MemberEdge[];                                      // exactly one role: brain; >=1 non-brain
+  manager?: { run: Id; epoch: number };                       // F-07, D-018; a Run role, not the Brain
   aliases: Alias[];
   folds: Fold[];
   presentation?: CompositePresentation;                       // D-035
@@ -74,11 +74,12 @@ type Composite = {
 type CompositePresentation = {
   label: string;
   renderer?: DefRef;          // a renderer package, not a Blueprint
-  body?: EntityRef;           // a direct member that stands for the assembly
+  body?: EntityRef;           // a direct child that stands for the assembly
 };
 
 type MemberEdge = {
   entity: EntityRef;
+  role: "brain" | "part" | "member";                          // D-047
   provenance: "grouping" | { template: string };              // D-025
 };
 ```
@@ -87,6 +88,10 @@ type MemberEdge = {
 grant can be rejected. Existence (`assembled` / `dissolved`) is encoded as presence or absence in
 `composites`; `forming` and `dissolving` are transaction-internal (F-06).
 
+A Composite has exactly one `role: "brain"` edge and at least one non-brain edge. `brain` and
+`part` reference Blockies; `member` may reference a Blockie or a Composite. The Composite itself has
+no Blueprint, state, or ports; the Brain provides them, and the Parts render slices.
+
 ## Aliases and folds
 
 ```ts
@@ -94,16 +99,16 @@ type Alias = {
   id: Id;
   direction: "in" | "out";
   kind: "value" | "event";
-  type: BtsType;                     // assertion; the member port's type is canonical
+  type: BtsType;                     // assertion; the child port's type is canonical
   ref:
-    | { member: EntityRef; port: PortId }
+    | { member: EntityRef; port: PortId }   // the Brain or a Member, never a Part
     | { fold: Id };
 };
 
 type Fold = {
   id: Id;
   op: "sum" | "count" | "min" | "max" | "collect";
-  select: { kind: "all" } | { kind: "members"; members: EntityRef[] };
+  select: { kind: "all" } | { kind: "members"; members: EntityRef[] };  // Members, not Parts
   port: PortId;                      // which output port of each selected member
   resultType: BtsType;
   emptyValue?: BtsValue;             // required when the empty set is legal
@@ -240,6 +245,7 @@ to the port it constrains, and a validator reading one port has everything it ne
 | `Blockie` has no placement, mode, or owner | D-013, D-019, D-001 |
 | `Composite.origin` union | D-001, D-025 |
 | `MemberEdge.provenance` | D-025 |
+| `MemberEdge.role` | D-047 |
 | `manager.epoch` | F-07, D-018 |
 | `Alias.ref` union without a dispatch case | D-032 |
 | `Fold.emptyValue` | D-026 |

@@ -30,8 +30,8 @@
   <div class="mermaid"><script type="text/plain">
 flowchart TB
   subgraph WORLD["the World"]
-    B["Blockie: manager<br/>id · blueprint · config · state"]
-    C["Composite: dashboard<br/>membership · aliases · fold · manager"]
+    B["Blockie: managerBlockie<br/>id · blueprint · config · state"]
+    C["Composite: dashboard<br/>brain · parts · members · aliases"]
     R["Run: orchestrator<br/>state · inbox · status"]
   end
   D1["Blueprint: manager@1<br/>immutable plan"]
@@ -43,21 +43,33 @@ flowchart TB
   </script></div>
 
   <table>
-    <thead><tr><th>Kind</th><th>Exists to</th><th>Owns</th><th>Dashboard example</th></tr></thead>
+    <thead><tr><th>Kind</th><th>Exists to</th><th>Owns</th><th>Examples</th></tr></thead>
     <tbody>
-      <tr><td><strong>Blockie</strong></td><td>be an inhabitant of the World</td><td>identity, one Blueprint, config, Blockie state</td><td>button, counter 1, gauge</td></tr>
-      <tr><td><strong>Composite</strong></td><td>be an explicit assembly of other entities</td><td>membership edges, aliases, folds, optional manager, optional presentation</td><td>dashboard</td></tr>
+      <tr><td><strong>Blockie</strong></td><td>be one cell of the World</td><td>identity, one Blueprint, config, Blockie state</td><td>button, counter1, gaugeBrain, gaugeSegment0</td></tr>
+      <tr><td><strong>Composite</strong></td><td>be a multi-cell widget</td><td>one Brain, Parts, Members, aliases, folds, optional manager, optional presentation</td><td>gaugeWidget, dashboard</td></tr>
       <tr><td><strong>Run</strong></td><td>be a long-lived, pausable activity</td><td>its own state, inbox, status, optional dispatch grant</td><td>orchestrator</td></tr>
-      <tr><td><strong>Definitions</strong></td><td>be immutable plans</td><td>nothing at run time; they are pinned references</td><td><code>counter@1</code>, <code>orchestrator@1</code></td></tr>
+      <tr><td><strong>Definitions</strong></td><td>be immutable plans</td><td>nothing at run time; they are pinned references</td><td><code>counter@1</code>, <code>gauge@1</code>, <code>orchestrator@1</code></td></tr>
     </tbody>
   </table>
+
+  <p>A Composite is not a Blockie with extra fields. It is an assembly: one Brain Blockie, zero or
+  more Part Blockies, and zero or more Members. The Gauge is a Composite of three cells; the
+  Dashboard is a Composite of five. The entity kind is Composite in both cases; the children's
+  roles make the difference.</p>
+
+  <div class="mermaid"><script type="text/plain">
+flowchart LR
+  D["Composite: dashboard<br/>brain: managerBlockie"] -->|"member"| G["Composite: gaugeWidget<br/>brain: gaugeBrain"]
+  G -->|"part"| P0["Blockie: gaugeSegment0"]
+  G -->|"part"| P1["Blockie: gaugeSegment1"]
+  </script></div>
 
   <p>A useful analogy:</p>
   <table>
     <thead><tr><th>Kind</th><th>Analogy</th><th>Why it helps</th></tr></thead>
     <tbody>
       <tr><td><strong>Blockie</strong></td><td>a noun</td><td>It is a thing you can point at and name.</td></tr>
-      <tr><td><strong>Composite</strong></td><td>a labelled box</td><td>It groups nouns, but it is not one of them.</td></tr>
+      <tr><td><strong>Composite</strong></td><td>a body with a brain</td><td>It is one thing, made of cells, with a controller.</td></tr>
       <tr><td><strong>Run</strong></td><td>a verb, with a timesheet</td><td>It is an activity that can start, wait, and stop.</td></tr>
       <tr><td><strong>Definition</strong></td><td>a recipe</td><td>It says how to make instances, but it is not one.</td></tr>
     </tbody>
@@ -70,7 +82,7 @@ flowchart TB
     <thead><tr><th></th><th>Identity</th><th>Own state</th><th>In the document</th><th>Can change?</th></tr></thead>
     <tbody>
       <tr><td><strong>Blockie</strong></td><td>yes</td><td>yes, Blockie state</td><td>yes</td><td>state and config change</td></tr>
-      <tr><td><strong>Composite</strong></td><td>yes</td><td>no; membership and aliases are records</td><td>yes</td><td>membership and presentation change</td></tr>
+      <tr><td><strong>Composite</strong></td><td>yes</td><td>no; its Brain and children have state</td><td>yes</td><td>roles, membership, and presentation change</td></tr>
       <tr><td><strong>Run</strong></td><td>yes</td><td>yes, Run state</td><td>yes</td><td>state and status change</td></tr>
       <tr><td><strong>Blueprint</strong></td><td>yes, by id and digest</td><td>no</td><td>published or embedded</td><td>never; a new version is a new definition</td></tr>
       <tr><td><strong>Process definition</strong></td><td>yes, by id and digest</td><td>no</td><td>published or embedded</td><td>never; a new version is a new definition</td></tr>
@@ -163,10 +175,16 @@ flowchart LR
   ports and claims its Blueprint declares. The <a href="types.html">Blueprints page</a> covers those
   permissions.</p>
 
+  <p>The same principle is why <strong>Gauge</strong> and <strong>Dashboard</strong> are not kinds.
+  They are both Composites; the Gauge's children are Parts, the Dashboard's children are Members.
+  Adding a "Gauge kind" and a "Dashboard kind" would turn every widget pattern into a new entity
+  kind.</p>
+
   <h2 id="mistakes">Common mistakes</h2>
   <ol>
-    <li><strong>Treating a Composite as a Blockie.</strong> It has no Blueprint, no state, no ports,
-    and no appearance of its own. It is a grouping with an alias table.</li>
+    <li><strong>Treating a Composite as a Blockie.</strong> It has no Blueprint, no state, and no
+    ports of its own; it is a multi-cell widget with a Brain and children. The Brain is a Blockie,
+    not the Composite.</li>
     <li><strong>Treating a Run as a function call.</strong> A Run has identity, state, and a
     lifecycle. It can wait, be cancelled, and survive a restart. A reducer cannot.</li>
     <li><strong>Deriving an ID from a name or position.</strong> Renaming or moving would break every

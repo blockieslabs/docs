@@ -18,7 +18,7 @@
   <div class="callout">
     <span class="label">Running example</span>
     <p>This is the <a href="example.html">dashboard</a> reduced to three members: a button, one
-    counter, and the gauge. The manager Run is not attached in this trace, so the process phase is
+    counter, and the gauge Composite. The manager Run is not attached in this trace, so the process phase is
     empty and the focus stays on the reducer and compute path.</p>
   </div>
 
@@ -33,12 +33,14 @@
       <tr><td><code>blockies.button.config</code></td><td><code>{ "label": "Press" }</code></td></tr>
       <tr><td><code>blockies.counter1.state</code></td><td><code>{ "count": 0 }</code></td></tr>
       <tr><td><code>blockies.counter1.config</code></td><td><code>{ "step": 1 }</code></td></tr>
-      <tr><td><code>blockies.gauge.state</code></td><td><code>{}</code></td></tr>
-      <tr><td><code>blockies.gauge.config</code></td><td><code>{ "min": 0, "max": 100, "unit": "%" }</code></td></tr>
-      <tr><td><code>composites.dashboard.members</code></td><td>button, counter1, gauge</td></tr>
-      <tr><td><code>composites.dashboard.aliases</code></td><td><code>press</code> → button.on_press; <code>count</code> → counter1.count; <code>display</code> → gauge.display</td></tr>
-      <tr><td><code>placements</code></td><td>dashboard (100, 50); button (20, 10); counter1 (120, 10); gauge (240, 10)</td></tr>
-      <tr><td><code>connections</code></td><td>button.on_toggle → counter1.increment; counter1.count → gauge.value</td></tr>
+      <tr><td><code>blockies.gaugeBrain.state</code></td><td><code>{}</code></td></tr>
+      <tr><td><code>blockies.gaugeBrain.config</code></td><td><code>{ "min": 0, "max": 100, "unit": "%", "segments": 2 }</code></td></tr>
+      <tr><td><code>blockies.gaugeSegment0/1.state</code></td><td><code>{}</code></td></tr>
+      <tr><td><code>composites.gaugeWidget</code></td><td>brain <code>gaugeBrain</code>; parts <code>gaugeSegment0</code>, <code>gaugeSegment1</code></td></tr>
+      <tr><td><code>composites.dashboard.members</code></td><td>button, counter1, gaugeWidget (member)</td></tr>
+      <tr><td><code>composites.dashboard.aliases</code></td><td><code>press</code> → button.on_press; <code>count</code> → counter1.count; <code>display</code> → gaugeWidget.display</td></tr>
+      <tr><td><code>placements</code></td><td>dashboard (100, 50); button (20, 10); counter1 (120, 10); gaugeWidget (240, 10); gaugeBrain (0, 0); segments (0, 1) and (0, 2), all inside the gauge</td></tr>
+      <tr><td><code>connections</code></td><td>button.on_toggle → counter1.increment; counter1.count → gaugeBrain.count; gaugeBrain.level → both gauge segments</td></tr>
       <tr><td><code>runs</code></td><td>empty</td></tr>
     </tbody>
   </table>
@@ -53,7 +55,8 @@ sequenceDiagram
   participant E as engine
   participant B as button
   participant C as counter 1
-  participant G as gauge
+  participant GB as gaugeBrain
+  participant GS as gauge segments
   participant V as view
   P->>E: deliver dashboard.press
   E->>E: resolve alias to button.on_press
@@ -61,8 +64,10 @@ sequenceDiagram
   B-->>E: pressed = true, emit on_toggle
   E->>C: reduce increment
   C-->>E: count = 1
-  E->>G: compute display from value
-  G-->>E: "1%"
+  E->>GB: compute level, display
+  GB-->>E: level, display
+  E->>GS: compute fill
+  GS-->>E: fills
   E->>E: commit generation N+1
   E-->>V: publish
   </script></div>
@@ -76,7 +81,8 @@ evt-2  emit      button.on_toggle -> counter1.increment
 evt-2  reduce    counter1.increment -> state.count = 1
        compute   button.pressed = true
        compute   counter1.count = 1
-       compute   gauge.display = "1%"
+       compute   gaugeBrain.level = 0.01, display = "1%"
+       compute   gaugeSegment0.fill = 0.02, gaugeSegment1.fill = 0
        commit    generation N+1</code></pre>
 
   <h2 id="phases">Phase by phase</h2>
@@ -89,7 +95,7 @@ evt-2  reduce    counter1.increment -> state.count = 1
       <tr><td>4</td><td>event</td><td><code>evt-1</code> goes to the button reducer; it flips <code>pressed</code> and emits <code>evt-2</code></td><td>button.pressed = true</td></tr>
       <tr><td>5</td><td>event</td><td><code>evt-2</code> goes to the counter reducer; it adds <code>config.step</code></td><td>counter1.count = 1</td></tr>
       <tr><td>6</td><td>process</td><td>no Run is ready, so no step runs</td><td>unchanged</td></tr>
-      <tr><td>7</td><td>value</td><td><code>button.pressed</code>, <code>counter1.count</code>, and <code>gauge.display</code> are computed</td><td>derived values updated</td></tr>
+      <tr><td>7</td><td>value</td><td><code>button.pressed</code>, <code>counter1.count</code>, <code>gaugeBrain.level</code>/<code>display</code>, and both segments' <code>fill</code> are computed</td><td>derived values updated</td></tr>
       <tr><td>8</td><td>prepare</td><td>states are validated; invariants and hashes are checked</td><td>staged result is valid</td></tr>
       <tr><td>9</td><td>commit</td><td>generation N+1 becomes the truth</td><td>document updated</td></tr>
       <tr><td>10</td><td>publish</td><td>views receive generation N+1</td><td>view updated</td></tr>
@@ -117,10 +123,22 @@ evt-2  reduce    counter1.increment -> state.count = 1
 -     "state": { "count": 0 }
 +     "state": { "count": 1 }
     },
-    "gauge": {
-      "id": "gauge",
+    "gaugeBrain": {
+      "id": "gaugeBrain",
       "blueprint": { "id": "gauge", "version": "1.0.0", "digest": "sha256:..." },
-      "config": { "min": 0, "max": 100, "unit": "%" },
+      "config": { "min": 0, "max": 100, "unit": "%", "segments": 2 },
+      "state": {}
+    },
+    "gaugeSegment0": {
+      "id": "gaugeSegment0",
+      "blueprint": { "id": "gauge-segment", "version": "1.0.0", "digest": "sha256:..." },
+      "config": { "index": 0, "segments": 2 },
+      "state": {}
+    },
+    "gaugeSegment1": {
+      "id": "gaugeSegment1",
+      "blueprint": { "id": "gauge-segment", "version": "1.0.0", "digest": "sha256:..." },
+      "config": { "index": 1, "segments": 2 },
       "state": {}
     }
   }</code></pre>
@@ -147,7 +165,9 @@ evt-2  reduce    counter1.increment -> state.count = 1
     <tbody>
       <tr><td><code>button.pressed</code></td><td><code>false</code></td><td><code>true</code></td></tr>
       <tr><td><code>counter1.count</code></td><td><code>0</code></td><td><code>1</code></td></tr>
-      <tr><td><code>gauge.display</code></td><td><code>"0%"</code></td><td><code>"1%"</code></td></tr>
+      <tr><td><code>gaugeWidget.display</code></td><td><code>"0%"</code></td><td><code>"1%"</code></td></tr>
+      <tr><td><code>gaugeSegment0.fill</code></td><td><code>0</code></td><td><code>0.02</code></td></tr>
+      <tr><td><code>gaugeSegment1.fill</code></td><td><code>0</code></td><td><code>0</code></td></tr>
       <tr><td><code>dashboard.count</code></td><td><code>0</code></td><td><code>1</code></td></tr>
       <tr><td><code>dashboard.display</code></td><td><code>"0%"</code></td><td><code>"1%"</code></td></tr>
     </tbody>
@@ -157,11 +177,11 @@ evt-2  reduce    counter1.increment -> state.count = 1
   not a cell.</p>
 
   <div class="callout warn">
-    <span class="label">Why <code>gauge.display</code> is not in the document</span>
-    <p>The gauge's state is <code>{}</code>. <code>display</code> is a computed output, a function of
-    the <code>value</code> input and the config. If the World is reloaded, the display is recomputed
-    from the same inputs. There is no stale string to store, and no second writer to disagree with
-    the computation.</p>
+    <span class="label">Why the gauge outputs are not in the document</span>
+    <p>The gauge Brain and its Parts all have <code>state: {}</code>. <code>level</code>,
+    <code>display</code>, and <code>fill</code> are computed outputs, functions of <code>count</code>
+    and the config. If the World is reloaded, they are recomputed from the same inputs. There is no
+    stale string or number to store, and no second writer to disagree with the computation.</p>
   </div>
 
   <h2 id="variations">Two variations worth seeing</h2>
@@ -179,7 +199,7 @@ evt-2  reduce    counter1.increment -> state.count = 1
   <p>If the counter reducer returns an invalid state, such as <code>{ "count": "one" }</code>, the
   transaction aborts. Nothing commits: the button's <code>pressed</code> stays <code>false</code>,
   the counter stays <code>0</code>, and the view stays at generation N. The event is not applied.</p>
-  <p>If the gauge's compute throws instead, the transaction still commits. The button and counter
+  <p>If the gauge brain's or a segment's compute throws instead, the transaction still commits. The button and counter
   states are valid; the <code>display</code> output becomes <code>error</code>. The click is not
   lost, and the derived value is honestly unavailable. Execution failure is local; contract
   violation is fatal.</p>
@@ -189,7 +209,7 @@ evt-2  reduce    counter1.increment -> state.count = 1
     <details>
       <summary>Which document rows changed?</summary>
       <p><code>blockies.button.state.pressed</code> and <code>blockies.counter1.state.count</code>.
-      The gauge's state is still <code>{}</code>, and no other table changed.</p>
+      The gauge Brain and Parts still have <code>state: {}</code>, and no other table changed.</p>
     </details>
     <details>
       <summary>Why did the counter's reducer run in the same event phase as the button's?</summary>
@@ -198,9 +218,10 @@ evt-2  reduce    counter1.increment -> state.count = 1
       stepped.</p>
     </details>
     <details>
-      <summary>Did the gauge's state change? Why not?</summary>
-      <p>No. The gauge has no mutable state. Its <code>display</code> is a computed output of the
-      <code>value</code> input and config, so it changes in the value phase, not in the document.</p>
+      <summary>Did the gauge Brain or Parts change state? Why not?</summary>
+      <p>No. The gauge Brain and Parts have no mutable state. Their <code>level</code>,
+      <code>display</code>, and <code>fill</code> are computed outputs of <code>count</code> and the
+      config, so they change in the value phase, not in the document.</p>
     </details>
     <details>
       <summary>If the counter reducer returns invalid state, what does the view see?</summary>
@@ -208,9 +229,10 @@ evt-2  reduce    counter1.increment -> state.count = 1
       state change.</p>
     </details>
     <details>
-      <summary>If the gauge compute throws, what does the view see?</summary>
-      <p>Generation N+1, with the button and counter states updated and <code>display</code> marked
-      as <code>error</code>. The compute failure is local; the transaction commits.</p>
+      <summary>If the gauge brain or a segment compute throws, what does the view see?</summary>
+      <p>Generation N+1, with the button and counter states updated and the affected output
+      (<code>display</code> or <code>fill</code>) marked as <code>error</code>. The compute failure is
+      local; the transaction commits.</p>
     </details>
     <details>
       <summary>If a Run claims <code>on_press</code>, does the button's reducer run?</summary>

@@ -18,8 +18,10 @@
 
   <div class="callout">
     <span class="label">Running example</span>
-    <p>The <a href="example.html">dashboard</a> has a button, two counters, and a gauge. This page
-    uses the button, the counter, and the gauge, because they are small enough to read in full.</p>
+    <p>The <a href="example.html">dashboard</a> has a button, two counters, and a gauge. The gauge
+    is a Composite: a brain Blockie and two segment Blockies. This page uses the button, the
+    counter, the gauge brain, and one segment, because their Blueprints are small enough to read in
+    full.</p>
   </div>
 
   <h2 id="three-words">Three words that look alike</h2>
@@ -100,6 +102,11 @@ flowchart TB
   <p>If the behaviour itself differed, not just the parameter, they would need different Blueprints.
   Config is for the same plan with different settings; a different plan is a different Blueprint.</p>
 
+  <p>The same rule applies inside a Composite. <code>gaugeBrain</code> pins <code>gauge@1</code>;
+  <code>gaugeSegment0</code> and <code>gaugeSegment1</code> both pin <code>gauge-segment@1</code>
+  and differ only in <code>config.index</code>. The gauge Composite has no Blueprint; it is the
+  arrangement of those Blockies.</p>
+
   <h2 id="config-vs-state">Configuration vs Blockie state</h2>
   <p>Both are typed values stored on the Blockie, which is why they look alike. The difference is
   who may change them and what they mean.</p>
@@ -124,6 +131,7 @@ flowchart LR
       <tr><td><strong>Changes when</strong></td><td>someone edits it</td><td>an event arrives</td></tr>
       <tr><td><strong>Effect on a Run</strong></td><td>takes effect at the next step; does <strong>not</strong> wake it</td><td>can change a computed output, which may satisfy a dependency wait</td></tr>
       <tr><td><strong>Counter example</strong></td><td><code>step = 10</code>, <code>label = "Revenue"</code></td><td><code>count = 30</code></td></tr>
+      <tr><td><strong>Gauge example</strong></td><td><code>gaugeBrain</code>: <code>{segments:2,min:0,max:100}</code>; <code>gaugeSegment0</code>: <code>{index:0}</code></td><td>both are <code>{}</code>; the gauge is compute-only</td></tr>
     </tbody>
   </table>
 
@@ -145,17 +153,38 @@ flowchart LR
   <strong>kind</strong>; every port has a value type. Nothing else is addressable from outside.</p>
 
   <table>
-    <thead><tr><th>Port</th><th>Direction</th><th>Kind</th><th>Value type</th><th>Producer</th></tr></thead>
+    <thead><tr><th>Port</th><th>On</th><th>Direction</th><th>Kind</th><th>Value type</th><th>Producer</th></tr></thead>
     <tbody>
-      <tr><td><code>on_press</code></td><td>in</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
-      <tr><td><code>on_toggle</code></td><td>out</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
-      <tr><td><code>pressed</code></td><td>out</td><td>value</td><td><code>boolean</code></td><td><code>compute</code></td></tr>
-      <tr><td><code>increment</code></td><td>in</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
-      <tr><td><code>count</code></td><td>out</td><td>value</td><td><code>integer</code></td><td><code>compute</code></td></tr>
-      <tr><td><code>value</code></td><td>in</td><td>value</td><td><code>number</code></td><td>—</td></tr>
-      <tr><td><code>display</code></td><td>out</td><td>value</td><td><code>string</code></td><td><code>compute</code></td></tr>
+      <tr><td><code>on_press</code></td><td>button</td><td>in</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
+      <tr><td><code>on_toggle</code></td><td>button</td><td>out</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
+      <tr><td><code>pressed</code></td><td>button</td><td>out</td><td>value</td><td><code>boolean</code></td><td><code>compute</code></td></tr>
+      <tr><td><code>increment</code></td><td>counter</td><td>in</td><td>event</td><td><code>{}</code></td><td>—</td></tr>
+      <tr><td><code>count</code></td><td>counter</td><td>out</td><td>value</td><td><code>integer</code></td><td><code>compute</code></td></tr>
+      <tr><td><code>count</code></td><td>gauge brain</td><td>in</td><td>value</td><td><code>number</code></td><td>—</td></tr>
+      <tr><td><code>level</code></td><td>gauge brain</td><td>out</td><td>value</td><td><code>number</code></td><td><code>compute</code></td></tr>
+      <tr><td><code>display</code></td><td>gauge brain</td><td>out</td><td>value</td><td><code>string</code></td><td><code>compute</code></td></tr>
+      <tr><td><code>level</code></td><td>gauge segment</td><td>in</td><td>value</td><td><code>number</code></td><td>—</td></tr>
+      <tr><td><code>fill</code></td><td>gauge segment</td><td>out</td><td>value</td><td><code>number</code></td><td><code>compute</code></td></tr>
     </tbody>
   </table>
+
+  <h3 id="gauge-blueprints">One Composite, three Blueprints</h3>
+  <p>The gauge is a Composite, but its Brain and each Part are Blockies with their own Blueprints.
+  The Composite itself has no Blueprint. That is the correction to the old model: a multi-cell
+  widget is not a single Type with a bigger appearance.</p>
+
+  <pre><code>gauge@1          the Brain: state {}, config {min, max, unit, segments}
+                 ports: count in, level out, display out
+
+gauge-segment@1  a Part: state {}, config {index, segments}
+                 ports: level in, fill out
+
+gaugeWidget      the Composite: brain gaugeBrain, parts gaugeSegment0..n
+                 no Blueprint, no state, no ports</code></pre>
+
+  <p>The Brain computes <code>level</code> from <code>count</code>; each Part computes
+  <code>fill</code> from <code>level</code> and its <code>index</code>. The Composite's alias
+  <code>display</code> points at the Brain's <code>display</code>; the Parts are internal.</p>
 
   <h3>Value vs event</h3>
   <p>A <strong>value</strong> is the latest information, like a variable. An <strong>event</strong>
@@ -196,6 +225,7 @@ flowchart TB
       <tr><td><strong>Can call outside?</strong></td><td>no</td><td>yes, through effects after commit</td></tr>
       <tr><td><strong>Writes</strong></td><td>nothing; returns output values</td><td>its own Run state; publishes outputs</td></tr>
       <tr><td><strong>Counter example</strong></td><td><code>count = state.count</code></td><td>a status that depends on an external service</td></tr>
+      <tr><td><strong>Gauge example</strong></td><td><code>gaugeBrain.level</code> and <code>display</code></td><td><code>managerBlockie.status</code></td></tr>
     </tbody>
   </table>
 
@@ -246,7 +276,7 @@ flowchart TB
   by an attached Run, the reducer never sees the event at all. The delivery goes to the Run's
   inbox instead (P-15, P-16).</p>
 
-  <h2 id="mistakes">Five mistakes this page is trying to prevent</h2>
+  <h2 id="mistakes">Six mistakes this page is trying to prevent</h2>
   <ol>
     <li><strong>Using "Type" for both things.</strong> Say Blueprint for the plan, value type for the
     shape. If a sentence works with both, it is ambiguous.</li>
@@ -260,10 +290,16 @@ flowchart TB
     <li><strong>Treating a process port as having a default.</strong> A process port with no
     attached Run is unavailable. Consumers are blocked; they never see a default or a stale
     value (C-32).</li>
+    <li><strong>Treating the gauge as one Blockie.</strong> The gauge is a Composite of three
+    Blockies. Its Brain and Parts have separate Blueprints, and the Composite itself has no
+    Blueprint.</li>
   </ol>
 
   <h2 id="rules">The rules, in one place</h2>
   <ul>
+    <li><strong>C-3.</strong> A Composite is a multi-cell widget: exactly one Brain Blockie, zero
+    or more Part Blockies, zero or more Members. It has no Blueprint and no ports; the Brain
+    provides the behavior.</li>
     <li><strong>C-33.</strong> A Blueprint declares an appearance, state and config schemas with
     initial values, ports, and optional compute and reduce logic.</li>
     <li><strong>C-34.</strong> Every port declares direction, kind, and a value type. A value output
